@@ -7,10 +7,12 @@ import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import MapView from '@/components/map/MapView';
 import { RouteChip } from '@/components/ui/RouteChip';
 import { useBusPositions } from '@/hooks/useBuses';
+import { useFavoriteRouteGeometry } from '@/hooks/useFavoriteRouteGeometry';
+import { useRouteGeometry } from '@/hooks/useRouteGeometry';
 import { useRouteStops } from '@/hooks/useRouteStops';
 import { useRoutes } from '@/hooks/useRoutes';
 import { useTheme } from '@/hooks/useTheme';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 export default function RoutesScreen() {
@@ -19,7 +21,12 @@ export default function RoutesScreen() {
   const { data: buses = [] } = useBusPositions();
   const { data: routes = [], isLoading, error } = useRoutes();
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
+  const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
   const [focusedStopId, setFocusedStopId] = useState<string | null>(null);
+  const [focusedBusId, setFocusedBusId] = useState<string | null>(null);
+  const [favoriteRouteIds, setFavoriteRouteIds] = useState<string[]>([]);
+  const [favoritesViewEnabled, setFavoritesViewEnabled] = useState(false);
+  const stopFocusReleaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isWideLayout = width >= 900;
 
@@ -28,23 +35,168 @@ export default function RoutesScreen() {
     [routes, selectedRouteId]
   );
 
-  const activeRouteIds = useMemo(() => new Set(buses.map((bus) => bus.routeId)), [buses]);
-  const selectedRouteBuses = useMemo(
-    () => (selectedRouteId ? buses.filter((bus) => bus.routeId === selectedRouteId) : []),
-    [buses, selectedRouteId]
+  const favoriteRouteSet = useMemo(() => new Set(favoriteRouteIds), [favoriteRouteIds]);
+  const isFavoritesView = favoritesViewEnabled && favoriteRouteIds.length > 0;
+  const visibleRoutes = useMemo(
+    () => (isFavoritesView ? routes.filter((route) => favoriteRouteSet.has(route.id)) : routes),
+    [favoriteRouteSet, isFavoritesView, routes]
   );
-  const { data: selectedRouteStops = [], isLoading: stopsLoading } = useRouteStops(selectedRouteId);
+  const displayedBuses = useMemo(
+    () => (isFavoritesView ? buses.filter((bus) => favoriteRouteSet.has(bus.routeId)) : buses),
+    [buses, favoriteRouteSet, isFavoritesView]
+  );
+  const routeShortNameById = useMemo(
+    () => routes.reduce<Record<string, string>>((acc, route) => {
+      acc[route.id] = route.shortName;
+      return acc;
+    }, {}),
+    [routes]
+  );
+  const routeColorById = useMemo(
+    () => routes.reduce<Record<string, string>>((acc, route) => {
+      acc[route.id] = route.color;
+      return acc;
+    }, {}),
+    [routes]
+  );
+  const isSelectedRouteFavorite = selectedRoute ? favoriteRouteSet.has(selectedRoute.id) : false;
+
+  const activeRouteIds = useMemo(() => new Set(displayedBuses.map((bus) => bus.routeId)), [displayedBuses]);
+  const selectedRouteBuses = useMemo(
+    () => {
+      if (selectedRouteId) return buses.filter((bus) => bus.routeId === selectedRouteId);
+      if (isFavoritesView) return displayedBuses;
+      return [];
+    },
+    [buses, displayedBuses, isFavoritesView, selectedRouteId]
+  );
+  const { data: selectedRouteCycles = [], isLoading: stopsLoading } = useRouteStops(selectedRouteId);
+  const selectedCycle = useMemo(
+    () => selectedRouteCycles.find((cycle) => cycle.id === selectedCycleId) ?? selectedRouteCycles[0] ?? null,
+    [selectedCycleId, selectedRouteCycles]
+  );
+  const cycleOptions = useMemo(() => selectedRouteCycles.slice(0, 4), [selectedRouteCycles]);
+  const selectedRouteStops = selectedCycle?.stops ?? [];
+  const { data: selectedRouteGeometry = [] } = useRouteGeometry(selectedRouteId, selectedRoute?.color || '#2563EB');
+  const { data: favoriteRouteGeometry = [] } = useFavoriteRouteGeometry(favoriteRouteIds, routeColorById);
+  const selectedCycleGeometry = useMemo(() => {
+    if (!selectedCycle) return selectedRouteGeometry;
+    return selectedRouteGeometry.filter((path) => path.patternName === selectedCycle.patternName);
+  }, [selectedCycle, selectedRouteGeometry]);
+  const displayedRouteGeometry = isFavoritesView ? favoriteRouteGeometry : selectedCycleGeometry;
+
+  useEffect(() => {
+    if (!selectedRouteId) {
+      setSelectedCycleId(null);
+      return;
+    }
+
+    if (selectedRouteCycles.length === 0) {
+      setSelectedCycleId(null);
+      return;
+    }
+
+    const hasSelectedCycle = selectedRouteCycles.some((cycle) => cycle.id === selectedCycleId);
+    if (!hasSelectedCycle) {
+      setSelectedCycleId(selectedRouteCycles[0].id);
+    }
+  }, [selectedCycleId, selectedRouteCycles, selectedRouteId]);
+
+  const focusedBus = useMemo(
+    () => displayedBuses.find((bus) => bus.id === focusedBusId) ?? null,
+    [displayedBuses, focusedBusId]
+  );
+
   const focusedStop = useMemo(
     () => selectedRouteStops.find((stop) => stop.id === focusedStopId) ?? null,
     [focusedStopId, selectedRouteStops]
   );
 
   const busesByRoute = useMemo(() => {
-    return buses.reduce<Record<string, number>>((acc, bus) => {
+    return displayedBuses.reduce<Record<string, number>>((acc, bus) => {
       acc[bus.routeId] = (acc[bus.routeId] ?? 0) + 1;
       return acc;
     }, {});
-  }, [buses]);
+  }, [displayedBuses]);
+
+  const renderActiveBusPill = (bus: (typeof selectedRouteBuses)[number]) => {
+    const stopAbbreviation = bus.currentStopId?.trim() || '--';
+    const occupancyValue = typeof bus.occupancyPercent === 'number' ? `${Math.round(bus.occupancyPercent)}%` : '--';
+    const showOccupancy = bus.capacity !== 0;
+    const routeLabel = routeShortNameById[bus.routeId] ?? bus.routeId;
+
+    return (
+      <Pressable
+        key={bus.id}
+        onPress={() => {
+          setFocusedBusId((current) => (current === bus.id ? null : bus.id));
+          setFocusedStopId(null);
+        }}
+        style={[
+          styles.busPill,
+          {
+            borderColor: theme.BORDER,
+            backgroundColor: focusedBusId === bus.id ? theme.SURFACE_2 : theme.SURFACE,
+          },
+        ]}
+      >
+        <Text style={[styles.busPillText, { color: theme.TEXT }]}>
+          {isFavoritesView ? `#${bus.id} ${routeLabel}` : `#${bus.id}`}
+        </Text>
+        <Text style={[styles.busPillMeta, { color: theme.TEXT_SECONDARY }]}> 
+          S:{stopAbbreviation}{showOccupancy ? ` O:${occupancyValue}` : ''}
+        </Text>
+      </Pressable>
+    );
+  };
+
+  const toggleFavoriteForSelectedRoute = () => {
+    if (!selectedRoute) return;
+
+    setFavoriteRouteIds((current) =>
+      current.includes(selectedRoute.id)
+        ? current.filter((id) => id !== selectedRoute.id)
+        : [...current, selectedRoute.id]
+    );
+  };
+
+  const toggleFavoritesView = () => {
+    setFavoritesViewEnabled((current) => !current);
+    setSelectedRouteId(null);
+    setSelectedCycleId(null);
+    setFocusedBusId(null);
+    setFocusedStopId(null);
+  };
+
+  const resetToAllBuses = () => {
+    setFavoritesViewEnabled(false);
+    setSelectedRouteId(null);
+    setSelectedCycleId(null);
+    setFocusedBusId(null);
+    setFocusedStopId(null);
+  };
+
+  const focusStopTemporarily = (stopId: string) => {
+    setFocusedBusId(null);
+    setFocusedStopId(stopId);
+
+    if (stopFocusReleaseTimerRef.current) {
+      clearTimeout(stopFocusReleaseTimerRef.current);
+    }
+
+    stopFocusReleaseTimerRef.current = setTimeout(() => {
+      setFocusedStopId((current) => (current === stopId ? null : current));
+      stopFocusReleaseTimerRef.current = null;
+    }, 900);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (stopFocusReleaseTimerRef.current) {
+        clearTimeout(stopFocusReleaseTimerRef.current);
+      }
+    };
+  }, []);
 
   if (isLoading) {
     return (
@@ -82,12 +234,28 @@ export default function RoutesScreen() {
               ]}
             >
               <View style={[styles.panelHeader, { borderBottomColor: theme.BORDER }]}>
-                <Text style={[styles.panelTitle, { color: theme.TEXT }]}>Routes</Text>
+                <View style={styles.routesHeaderRow}>
+                  <Text style={[styles.panelTitle, { color: theme.TEXT }]}>Routes</Text>
+                  <Pressable
+                    onPress={toggleFavoritesView}
+                    style={[
+                      styles.favoritesToggle,
+                      {
+                        borderColor: theme.BORDER,
+                        backgroundColor: isFavoritesView ? theme.SURFACE_2 : theme.SURFACE,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.favoritesToggleText, { color: theme.TEXT }]}> 
+                      {isFavoritesView ? 'All' : 'Favorites'}
+                    </Text>
+                  </Pressable>
+                </View>
                 <Text style={[styles.panelSubtitle, { color: theme.TEXT_SECONDARY }]}>Tap a route to focus the map</Text>
               </View>
 
               <FlatList
-                data={routes}
+                data={visibleRoutes}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item: route }) => {
                   const isSelected = selectedRouteId === route.id;
@@ -96,7 +264,10 @@ export default function RoutesScreen() {
                   return (
                     <Pressable
                       onPress={() => {
+                        setFavoritesViewEnabled(false);
                         setFocusedStopId(null);
+                        setFocusedBusId(null);
+                        setSelectedCycleId(null);
                         setSelectedRouteId((current) => (current === route.id ? null : route.id));
                       }}
                       style={[
@@ -107,6 +278,14 @@ export default function RoutesScreen() {
                         },
                       ]}
                     >
+                      <Text
+                        style={[
+                          styles.routeFavoriteIndicator,
+                          { color: favoriteRouteSet.has(route.id) ? '#DC2626' : theme.BORDER },
+                        ]}
+                      >
+                        {favoriteRouteSet.has(route.id) ? '♥' : '♡'}
+                      </Text>
                       <RouteChip routeName={route.shortName} size="medium" />
 
                       <View style={styles.routeInfo}>
@@ -131,45 +310,136 @@ export default function RoutesScreen() {
             </View>
 
             <View style={styles.mapColumn}>
-              <View style={[styles.mapPanel, { borderColor: theme.BORDER }]}>
-                <MapView
-                  buses={buses}
-                  stops={selectedRouteStops}
-                  selectedRouteId={selectedRouteId || undefined}
-                  focusedStop={focusedStop}
-                  onStopPress={(stop) => setFocusedStopId(stop.id)}
-                />
-                <View style={[styles.mapOverlay, { backgroundColor: theme.SURFACE }]}>
-                  <Text style={[styles.overlayTitle, { color: theme.TEXT }]}>
-                    {selectedRoute ? `${selectedRoute.shortName} • ${selectedRoute.name}` : 'All routes'}
-                  </Text>
-                  <Text style={[styles.overlaySubtitle, { color: theme.TEXT_SECONDARY }]}>Tap a bus marker for details</Text>
+              <View style={styles.mapPanelContainer}>
+                <View style={[styles.mapPanel, { borderColor: theme.BORDER }]}> 
+                  <MapView
+                    buses={displayedBuses}
+                    stops={selectedRouteStops}
+                    routePaths={displayedRouteGeometry}
+                    selectedRouteId={isFavoritesView ? undefined : selectedRouteId || undefined}
+                    focusedBus={focusedBus}
+                    focusedStop={focusedStop}
+                    onBusPress={(bus) => {
+                      setFocusedBusId(bus.id);
+                      setFocusedStopId(null);
+                    }}
+                    onStopPress={(stop) => focusStopTemporarily(stop.id)}
+                    onMapPress={() => {
+                      setFocusedBusId(null);
+                      setFocusedStopId(null);
+                    }}
+                  />
+                  <View style={[styles.mapOverlay, { backgroundColor: theme.SURFACE }]}> 
+                    <Text style={[styles.overlayTitle, { color: theme.TEXT }]}> 
+                      {selectedRoute
+                        ? `${selectedRoute.shortName} • ${selectedRoute.name}`
+                        : isFavoritesView
+                          ? 'Favorite routes'
+                          : 'All routes'}
+                    </Text>
+                    <Text style={[styles.overlaySubtitle, { color: theme.TEXT_SECONDARY }]}>Tap a bus marker for details</Text>
+                  </View>
                 </View>
+                <Pressable
+                  onPress={resetToAllBuses}
+                  style={[styles.resetMapButton, { backgroundColor: theme.SURFACE }]}
+                >
+                  <Text style={[styles.resetMapButtonText, { color: theme.TEXT }]}>Reset</Text>
+                </Pressable>
               </View>
 
               <View style={[styles.stopsPanel, { backgroundColor: theme.SURFACE, borderColor: theme.BORDER }]}>
                 <View style={[styles.panelHeader, { borderBottomColor: theme.BORDER }]}>
-                  <Text style={[styles.panelTitle, { color: theme.TEXT }]}>Stops</Text>
+                  <View style={styles.stopsHeaderRow}>
+                    <Text style={[styles.panelTitle, { color: theme.TEXT }]}> 
+                      {selectedRoute
+                        ? `Stops • ${selectedRoute.shortName}`
+                        : isFavoritesView
+                          ? 'Stops • Favorites'
+                          : 'Stops'}
+                    </Text>
+                    <View style={styles.stopsHeaderActions}>
+                      {selectedRoute ? (
+                        <Pressable
+                          onPress={toggleFavoriteForSelectedRoute}
+                          style={[
+                            styles.favoriteRouteButton,
+                            {
+                              borderColor: theme.BORDER,
+                              backgroundColor: theme.SURFACE,
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.favoriteRouteButtonText,
+                              { color: isSelectedRouteFavorite ? '#DC2626' : theme.TEXT_SECONDARY },
+                            ]}
+                          >
+                            {isSelectedRouteFavorite ? '♥' : '♡'}
+                          </Text>
+                        </Pressable>
+                      ) : null}
+
+                      {selectedRoute || isFavoritesView ? (
+                        <View style={styles.headerBusControls}>
+                          <Text style={[styles.headerBusLabel, { color: theme.TEXT_SECONDARY }]}>Active buses</Text>
+                          <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.headerBusButtons}
+                          >
+                            {selectedRouteBuses.length === 0 ? (
+                              <Text style={[styles.headerBusEmptyText, { color: theme.TEXT_SECONDARY }]}>None</Text>
+                            ) : (
+                              selectedRouteBuses.map(renderActiveBusPill)
+                            )}
+                          </ScrollView>
+                        </View>
+                      ) : null}
+                    </View>
+                  </View>
                   <Text style={[styles.panelSubtitle, { color: theme.TEXT_SECONDARY }]}>
-                    {selectedRoute
-                      ? `${selectedRouteStops.length} stops from pattern points`
+                    {isFavoritesView
+                      ? `${selectedRouteBuses.length} live buses across ${favoriteRouteIds.length} favorites`
+                      : selectedRoute
+                      ? `${selectedRouteStops.length} stops in ${selectedCycle?.label ?? 'current cycle'}`
                       : 'Select a route to view stops'}
                   </Text>
                 </View>
-                {selectedRoute ? (
+                {isFavoritesView ? (
+                  <View style={styles.stopsContent}>
+                    <Text style={[styles.stopsText, { color: theme.TEXT_SECONDARY }]}>Favorites mode is active. Stops list is hidden.</Text>
+                  </View>
+                ) : selectedRoute ? (
                   <>
-                    <View style={[styles.busInfoSection, { borderBottomColor: theme.BORDER }]}> 
-                      <Text style={[styles.busInfoHeader, { color: theme.TEXT }]}>Active buses on route</Text>
-                      {selectedRouteBuses.length === 0 ? (
-                        <Text style={[styles.busInfoText, { color: theme.TEXT_SECONDARY }]}>No active buses on this route.</Text>
-                      ) : (
-                        selectedRouteBuses.map((bus) => (
-                          <Text key={bus.id} style={[styles.busInfoText, { color: theme.TEXT_SECONDARY }]}>
-                            #{bus.id} • {Math.round(bus.speed)} mph • stop {bus.currentStopId || 'N/A'}
-                          </Text>
-                        ))
-                      )}
-                    </View>
+                    {cycleOptions.length > 1 ? (
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={[styles.cycleSelectorRow, { borderBottomColor: theme.BORDER }]}
+                        contentContainerStyle={styles.cycleSelectorContent}
+                      >
+                        {cycleOptions.map((cycle) => (
+                          <Pressable
+                            key={cycle.id}
+                            onPress={() => {
+                              setSelectedCycleId(cycle.id);
+                              setFocusedStopId(null);
+                            }}
+                            style={[
+                              styles.cyclePill,
+                              {
+                                borderColor: theme.BORDER,
+                                backgroundColor: selectedCycle?.id === cycle.id ? theme.SURFACE_2 : theme.SURFACE,
+                              },
+                            ]}
+                          >
+                            <Text style={[styles.cyclePillText, { color: theme.TEXT }]}>{cycle.label}</Text>
+                          </Pressable>
+                        ))}
+                      </ScrollView>
+                    ) : null}
 
                     <ScrollView style={styles.stopsScroll} contentContainerStyle={styles.stopsListContent}>
                       {stopsLoading ? (
@@ -180,7 +450,7 @@ export default function RoutesScreen() {
                         selectedRouteStops.map((stop) => (
                           <Pressable
                             key={stop.id}
-                            onPress={() => setFocusedStopId(stop.id)}
+                            onPress={() => focusStopTemporarily(stop.id)}
                             style={[
                               styles.stopRow,
                               {
@@ -208,45 +478,136 @@ export default function RoutesScreen() {
         ) : (
           <>
             <View style={styles.mapColumn}>
-              <View style={[styles.mapPanel, { borderColor: theme.BORDER }]}>
-                <MapView
-                  buses={buses}
-                  stops={selectedRouteStops}
-                  selectedRouteId={selectedRouteId || undefined}
-                  focusedStop={focusedStop}
-                  onStopPress={(stop) => setFocusedStopId(stop.id)}
-                />
-                <View style={[styles.mapOverlay, { backgroundColor: theme.SURFACE }]}>
-                  <Text style={[styles.overlayTitle, { color: theme.TEXT }]}>
-                    {selectedRoute ? `${selectedRoute.shortName} • ${selectedRoute.name}` : 'All routes'}
-                  </Text>
-                  <Text style={[styles.overlaySubtitle, { color: theme.TEXT_SECONDARY }]}>Tap a bus marker for details</Text>
+              <View style={styles.mapPanelContainer}>
+                <View style={[styles.mapPanel, { borderColor: theme.BORDER }]}> 
+                  <MapView
+                    buses={displayedBuses}
+                    stops={selectedRouteStops}
+                    routePaths={displayedRouteGeometry}
+                    selectedRouteId={isFavoritesView ? undefined : selectedRouteId || undefined}
+                    focusedBus={focusedBus}
+                    focusedStop={focusedStop}
+                    onBusPress={(bus) => {
+                      setFocusedBusId(bus.id);
+                      setFocusedStopId(null);
+                    }}
+                    onStopPress={(stop) => focusStopTemporarily(stop.id)}
+                    onMapPress={() => {
+                      setFocusedBusId(null);
+                      setFocusedStopId(null);
+                    }}
+                  />
+                  <View style={[styles.mapOverlay, { backgroundColor: theme.SURFACE }]}> 
+                    <Text style={[styles.overlayTitle, { color: theme.TEXT }]}> 
+                      {selectedRoute
+                        ? `${selectedRoute.shortName} • ${selectedRoute.name}`
+                        : isFavoritesView
+                          ? 'Favorite routes'
+                          : 'All routes'}
+                    </Text>
+                    <Text style={[styles.overlaySubtitle, { color: theme.TEXT_SECONDARY }]}>Tap a bus marker for details</Text>
+                  </View>
                 </View>
+                <Pressable
+                  onPress={resetToAllBuses}
+                  style={[styles.resetMapButton, { backgroundColor: theme.SURFACE }]}
+                >
+                  <Text style={[styles.resetMapButtonText, { color: theme.TEXT }]}>Reset</Text>
+                </Pressable>
               </View>
 
               <View style={[styles.stopsPanel, { backgroundColor: theme.SURFACE, borderColor: theme.BORDER }]}>
                 <View style={[styles.panelHeader, { borderBottomColor: theme.BORDER }]}>
-                  <Text style={[styles.panelTitle, { color: theme.TEXT }]}>Stops</Text>
+                  <View style={styles.stopsHeaderRow}>
+                    <Text style={[styles.panelTitle, { color: theme.TEXT }]}> 
+                      {selectedRoute
+                        ? `Stops • ${selectedRoute.shortName}`
+                        : isFavoritesView
+                          ? 'Stops • Favorites'
+                          : 'Stops'}
+                    </Text>
+                    <View style={styles.stopsHeaderActions}>
+                      {selectedRoute ? (
+                        <Pressable
+                          onPress={toggleFavoriteForSelectedRoute}
+                          style={[
+                            styles.favoriteRouteButton,
+                            {
+                              borderColor: theme.BORDER,
+                              backgroundColor: theme.SURFACE,
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.favoriteRouteButtonText,
+                              { color: isSelectedRouteFavorite ? '#DC2626' : theme.TEXT_SECONDARY },
+                            ]}
+                          >
+                            {isSelectedRouteFavorite ? '♥' : '♡'}
+                          </Text>
+                        </Pressable>
+                      ) : null}
+
+                      {selectedRoute || isFavoritesView ? (
+                        <View style={styles.headerBusControls}>
+                          <Text style={[styles.headerBusLabel, { color: theme.TEXT_SECONDARY }]}>Active buses</Text>
+                          <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.headerBusButtons}
+                          >
+                            {selectedRouteBuses.length === 0 ? (
+                              <Text style={[styles.headerBusEmptyText, { color: theme.TEXT_SECONDARY }]}>None</Text>
+                            ) : (
+                              selectedRouteBuses.map(renderActiveBusPill)
+                            )}
+                          </ScrollView>
+                        </View>
+                      ) : null}
+                    </View>
+                  </View>
                   <Text style={[styles.panelSubtitle, { color: theme.TEXT_SECONDARY }]}> 
-                    {selectedRoute
-                      ? `${selectedRouteStops.length} stops from pattern points`
+                    {isFavoritesView
+                      ? `${selectedRouteBuses.length} live buses across ${favoriteRouteIds.length} favorites`
+                      : selectedRoute
+                      ? `${selectedRouteStops.length} stops in ${selectedCycle?.label ?? 'current cycle'}`
                       : 'Select a route to view stops'}
                   </Text>
                 </View>
-                {selectedRoute ? (
+                {isFavoritesView ? (
+                  <View style={styles.stopsContent}>
+                    <Text style={[styles.stopsText, { color: theme.TEXT_SECONDARY }]}>Favorites mode is active. Stops list is hidden.</Text>
+                  </View>
+                ) : selectedRoute ? (
                   <>
-                    <View style={[styles.busInfoSection, { borderBottomColor: theme.BORDER }]}> 
-                      <Text style={[styles.busInfoHeader, { color: theme.TEXT }]}>Active buses on route</Text>
-                      {selectedRouteBuses.length === 0 ? (
-                        <Text style={[styles.busInfoText, { color: theme.TEXT_SECONDARY }]}>No active buses on this route.</Text>
-                      ) : (
-                        selectedRouteBuses.map((bus) => (
-                          <Text key={bus.id} style={[styles.busInfoText, { color: theme.TEXT_SECONDARY }]}>
-                            #{bus.id} • {Math.round(bus.speed)} mph • stop {bus.currentStopId || 'N/A'}
-                          </Text>
-                        ))
-                      )}
-                    </View>
+                    {cycleOptions.length > 1 ? (
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={[styles.cycleSelectorRow, { borderBottomColor: theme.BORDER }]}
+                        contentContainerStyle={styles.cycleSelectorContent}
+                      >
+                        {cycleOptions.map((cycle) => (
+                          <Pressable
+                            key={cycle.id}
+                            onPress={() => {
+                              setSelectedCycleId(cycle.id);
+                              setFocusedStopId(null);
+                            }}
+                            style={[
+                              styles.cyclePill,
+                              {
+                                borderColor: theme.BORDER,
+                                backgroundColor: selectedCycle?.id === cycle.id ? theme.SURFACE_2 : theme.SURFACE,
+                              },
+                            ]}
+                          >
+                            <Text style={[styles.cyclePillText, { color: theme.TEXT }]}>{cycle.label}</Text>
+                          </Pressable>
+                        ))}
+                      </ScrollView>
+                    ) : null}
 
                     <ScrollView style={styles.stopsScroll} contentContainerStyle={styles.stopsListContent}>
                       {stopsLoading ? (
@@ -257,7 +618,7 @@ export default function RoutesScreen() {
                         selectedRouteStops.map((stop) => (
                           <Pressable
                             key={stop.id}
-                            onPress={() => setFocusedStopId(stop.id)}
+                            onPress={() => focusStopTemporarily(stop.id)}
                             style={[
                               styles.stopRow,
                               {
@@ -293,12 +654,28 @@ export default function RoutesScreen() {
               ]}
             >
               <View style={[styles.panelHeader, { borderBottomColor: theme.BORDER }]}> 
-                <Text style={[styles.panelTitle, { color: theme.TEXT }]}>Routes</Text>
+                <View style={styles.routesHeaderRow}>
+                  <Text style={[styles.panelTitle, { color: theme.TEXT }]}>Routes</Text>
+                  <Pressable
+                    onPress={toggleFavoritesView}
+                    style={[
+                      styles.favoritesToggle,
+                      {
+                        borderColor: theme.BORDER,
+                        backgroundColor: isFavoritesView ? theme.SURFACE_2 : theme.SURFACE,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.favoritesToggleText, { color: theme.TEXT }]}> 
+                      {isFavoritesView ? 'All' : 'Favorites'}
+                    </Text>
+                  </Pressable>
+                </View>
                 <Text style={[styles.panelSubtitle, { color: theme.TEXT_SECONDARY }]}>Tap a route to focus the map</Text>
               </View>
 
               <FlatList
-                data={routes}
+                data={visibleRoutes}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item: route }) => {
                   const isSelected = selectedRouteId === route.id;
@@ -307,7 +684,10 @@ export default function RoutesScreen() {
                   return (
                     <Pressable
                       onPress={() => {
+                        setFavoritesViewEnabled(false);
                         setFocusedStopId(null);
+                        setFocusedBusId(null);
+                        setSelectedCycleId(null);
                         setSelectedRouteId((current) => (current === route.id ? null : route.id));
                       }}
                       style={[
@@ -318,6 +698,14 @@ export default function RoutesScreen() {
                         },
                       ]}
                     >
+                      <Text
+                        style={[
+                          styles.routeFavoriteIndicator,
+                          { color: favoriteRouteSet.has(route.id) ? '#DC2626' : theme.BORDER },
+                        ]}
+                      >
+                        {favoriteRouteSet.has(route.id) ? '♥' : '♡'}
+                      </Text>
                       <RouteChip routeName={route.shortName} size="medium" />
 
                       <View style={styles.routeInfo}>
@@ -362,6 +750,10 @@ const styles = StyleSheet.create({
   mapColumn: {
     flex: 1,
     gap: 12,
+  },
+  mapPanelContainer: {
+    flex: 1,
+    position: 'relative',
   },
   listPanel: {
     borderWidth: 1,
@@ -412,19 +804,103 @@ const styles = StyleSheet.create({
   stopRowText: {
     fontSize: 13,
   },
-  busInfoSection: {
+  cycleSelectorRow: {
     borderBottomWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    maxHeight: 44,
   },
-  busInfoHeader: {
-    fontSize: 13,
-    fontWeight: '700',
-    marginBottom: 4,
+  cycleSelectorContent: {
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  busInfoText: {
+  cyclePill: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  cyclePillText: {
     fontSize: 12,
-    marginTop: 2,
+    fontWeight: '600',
+  },
+  stopsHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+  },
+  routesHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 8,
+  },
+  favoritesToggle: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  favoritesToggleText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  stopsHeaderActions: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 6,
+  },
+  favoriteRouteButton: {
+    borderWidth: 1,
+    borderRadius: 999,
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  favoriteRouteButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  headerBusControls: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 6,
+  },
+  headerBusLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  headerBusButtons: {
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 2,
+  },
+  headerBusEmptyText: {
+    fontSize: 12,
+  },
+  busPill: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    minWidth: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 1,
+  },
+  busPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  busPillMeta: {
+    fontSize: 9,
+    fontWeight: '600',
   },
   panelHeader: {
     paddingHorizontal: 16,
@@ -451,6 +927,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
+  },
+  routeFavoriteIndicator: {
+    fontSize: 16,
+    marginRight: 10,
+    width: 16,
+    textAlign: 'center',
   },
   routeInfo: {
     flex: 1,
@@ -481,5 +963,24 @@ const styles = StyleSheet.create({
   overlaySubtitle: {
     marginTop: 2,
     fontSize: 12,
+  },
+  resetMapButton: {
+    position: 'absolute',
+    top: 14,
+    right: 14,
+    borderWidth: 0,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    zIndex: 120,
+    elevation: 16,
+    shadowColor: '#000000',
+    shadowOpacity: 0.36,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+  },
+  resetMapButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

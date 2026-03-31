@@ -12,7 +12,7 @@ export const API_ENDPOINTS = {
 
 // Data refresh intervals (in milliseconds)
 export const REFRESH_INTERVALS = {
-  VEHICLES: 3_000,         // Bus positions: 3 seconds
+  VEHICLES: 5_000,         // Bus positions: 5 seconds
   ARRIVALS: 20_000,        // ETAs at stop: 20 seconds
   ROUTES: 3_600_000,       // Route list: 1 hour (cached for session)
   STOPS: 3_600_000,        // Stop list: 1 hour (cached for session)

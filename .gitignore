@@ -9,6 +9,12 @@ venv/
 __pycache__/
 **/__pycache__/
 *.py[cod]
+.pytest_cache/
+**/.pytest_cache/
+.mypy_cache/
+**/.mypy_cache/
+.ruff_cache/
+**/.ruff_cache/
 
 # Expo
 .expo/
@@ -44,6 +50,10 @@ pnpm-debug.*
 # macOS
 .DS_Store
 **/.DS_Store
+._*
+**/._*
+Thumbs.db
+**/Thumbs.db
 *.pem
 
 # editor files

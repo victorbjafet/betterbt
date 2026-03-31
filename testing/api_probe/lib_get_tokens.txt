@@ -1,0 +1,11 @@
+getActiveAlerts
+getBounds
+getBuses
+getLatLng
+getNextDeparturesForStop
+getPatternPoints
+getPopup
+getRoutePatterns
+getRoutes
+getStates
+getTime

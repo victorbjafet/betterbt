@@ -73,3 +73,22 @@ export interface NearestStop {
   stop: Stop;
   distanceMeters: number;
 }
+
+export interface RouteGeometryPath {
+  id: string;
+  routeId: string;
+  patternName: string;
+  color: string;
+  coordinates: Array<{
+    latitude: number;
+    longitude: number;
+  }>;
+}
+
+export interface RouteStopCycle {
+  id: string;
+  routeId: string;
+  patternName: string;
+  label: string;
+  stops: Stop[];
+}

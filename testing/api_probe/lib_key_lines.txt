@@ -1,0 +1,98 @@
+7:    let busUrl = modUrl + "&method=getBuses";
+8:    let routeUrl = modUrl + "&method=getRoutes";
+9:    let patternUrl = modUrl + "&method=getRoutePatterns";
+10:    let patternPointsUrl = modUrl + "&method=getPatternPoints";
+11:    let nextDeparturesForStopUrl = modUrl + "&method=getNextDeparturesForStop";
+12:    let alertUrl = modUrl + "&method=getActiveAlerts";
+21:    Main.patternPointsUrl = patternPointsUrl;
+26:    data.Routes.load(routeUrl, function (rx) {
+27:      Main.routes = rx.data;
+32:    data.Patterns.load(patternUrl, function (patternsJson) {
+33:      // Get list of pattern names from patternsJson
+34:      patternsJson.data.forEach(function (patternJson) {
+35:        var pattern = models.Pattern.fromJSON(patternJson);
+36:        //console.log(pattern.routeId, pattern.name);
+37:        Main.patterns[pattern.name] = pattern;
+92:    // Turn routes into an array
+93:    routes = Array();
+94:    for (var routeId in Main.routes) {
+95:      routes.push(Main.routes[routeId][0]);
+99:    routes = routes.sort(function (r1, r2) {
+100:      if (r1.routeName > r2.routeName)
+102:      if (r1.routeName < r2.routeName)
+108:    routes.forEach(function (route) {
+109:      if (route != null) {
+110:        //console.log(route);
+111:        Main.sel.add(new Option(route.routeName, route.routeShortName));
+120:      var route = Main.routes[rsel][0]
+124:      // Find patterns for buses on this route
+127:        if (rsel.indexOf(bus.routeId) != -1) {
+128:          busPatterns[bus.patternName] = true;
+132:      for (var patternId in Main.patterns) {
+133:        var pattern = Main.patterns[patternId];
+134:        if (rsel.indexOf(pattern.routeId) == -1) {
+137:        // Draw solid lines for active patterns
+138:        var active = busPatterns[patternId];
+139:        Main.addPolyline(patternId, route, !active);
+198:      //alert(bus.routeId + " state missing lat or lon");
+206:      if (affected && affected.contains(bus.routeId)) {
+220:        popup += "<img class='route-alert' src='../../images/icon-alert.png' style='width: 25px; height:25px;' /><b>Active Alert</b><br /><br />"
+224:        "<b>Route:</b> " + routeBox(Main.routes[bus.routeId][0]) + "<br />" +
+229:        "<a href='/index.php/routes-schedules?route=" + bus.routeId + "'>View Route/Schedule details</a>");
+244:    if (!Main.routes[bus.routeId]) {
+245:      //alert("No route " + bus.routeId + " " + bus.patternName);
+248:    var route = Main.routes[bus.routeId][0];
+251:      "<b>Route:</b> " + bus.routeId + "<br />" +
+252:      "<b>Pattern:</b> " + bus.patternName + "<br />" +
+256:      "<a href='/index.php/routes-schedules?route=" + bus.routeId + "'>View Route/Schedule details</a>");
+261:      Main.addPolyline(bus.patternName, route);
+267:      iconUrl: "/media/mod_bt_map/img/" + route.routeColor + ((electric_buses.indexOf(bus.id) > -1) ? "_electric" : "") + ".png",
+321:  Main.addPolyline = function (patternId, route, dash = false, retrieved = false) {
+322:    const selected_pattern = Main.patterns[patternId];
+323:    if (!selected_pattern) {
+327:    if (selected_pattern.points.length === 0) {
+328:      data.PatternPoints.load(Main.patternPointsUrl, patternId, function (patternPointsJson) {
+329:        selected_pattern.points = patternPointsJson.data;
+330:        //console.log("called back", patternPointsJson);
+332:        if (selected_pattern.points.length > 0) {
+333:          Main.addPolyline(patternId, route, dash, true);
+339:    //Draw selected route
+340:    const polyline = Main.pattern_polyline(selected_pattern, route, dash);
+344:    const stops = Main.pattern_stop_markers(selected_pattern, route);
+355:  Main.pattern_polyline = function (pattern, route, dash = false) {
+357:    pattern.points.forEach(function (point) {
+362:      color: "#" + route.routeColor,
+371:        window.location.href = "/index.php/routes-schedules?route=" + routeId;
+378:  Main.pattern_stop_markers = function (pattern, route) {
+380:    var color = "#" + route.routeColor
+382:    pattern.points.forEach(function (point) {
+396:      var title = point.patternPointName + ' (#' + point.stopCode + ')';
+410:            stopCode: point.stopCode,
+417:              const id = "#stopTableRow" + point.stopCode;
+431:  const createPopup = (departures, title, marker) => {
+436:    departures.forEach((departure) => {
+437:      const departureTime = moment(departure.adjustedDepartureTime);
+438:      popupContent += '<li>' + departure.routeShortName + ": " + departureTime.format('hh:mm A') + '</li>';
+448:  function routeBox(route) {
+449:    boxStyles = 'margin-left: 5px; margin-bottom: 2px; text-align: center; min-width: 25px; outline: 3px solid #' + route.routeColor + '; background-color: #' + route.routeColor + '; color: white; ' + 'display: inline-block;';
+451:      `<div class='route-color-box' id='route-color-box-${route.routeShortName}' style='${boxStyles}'>` +
+452:      `<b>${route.routeShortName}</b>` +
+459:  Main.patterns = new Object();
+460:  Main.routes = new Array();
+516:    PatternPoints.load = function (url, patternName, cb) {
+517:      //console.log("request: " + patternName);
+518:      util.Ajax.sendAjaxRequest("POST", url + "&patternName=" + patternName, "", cb);
+555:        routeId: json.routeId,
+557:        patternName: json.patternName,
+559:        tripStartOn: json.tripStartOn,
+594:      this.patternPointId = s.patternPointId;
+638:        patternPointId: json.patternPointId,
+659:      var pattern = Object.create(Pattern.prototype);
+660:      return Object.assign(pattern, json, {
+713:      var route = Object.create(Route.prototype);
+714:      return Object.assign(route, json, {
+716:        routeColor: json.routeColor,
+717:        routeColorAdjustment: json.routeColorAdjustment,
+718:        routeName: json.routeName,
+719:        routeShortName: json.routeShortName,
+720:        routeTextColor: json.routeTextColor

@@ -1,6 +1,6 @@
 import { STALE_TIMES } from '@/constants/config';
 import { fetchPatternPoints, fetchRoutePatterns } from '@/services/api/btApi';
-import { Stop } from '@/types/transit';
+import { RouteStopCycle, Stop } from '@/types/transit';
 import { useQuery } from '@tanstack/react-query';
 
 export function useRouteStops(routeId?: string | null) {
@@ -9,7 +9,7 @@ export function useRouteStops(routeId?: string | null) {
     enabled: Boolean(routeId),
     staleTime: STALE_TIMES.ROUTES,
     retry: 2,
-    queryFn: async (): Promise<Stop[]> => {
+    queryFn: async (): Promise<RouteStopCycle[]> => {
       if (!routeId) return [];
 
       const patterns = await fetchRoutePatterns();
@@ -19,38 +19,43 @@ export function useRouteStops(routeId?: string | null) {
         routePatterns.map((pattern) => fetchPatternPoints(pattern.name))
       );
 
-      const stopById = new Map<string, Stop>();
+      return pointLists
+        .map((points, index) => {
+          const pattern = routePatterns[index];
+          const stopById = new Map<string, Stop>();
 
-      pointLists.forEach((points) => {
-        points.forEach((point) => {
-          if (point.isBusStop !== 'Y') return;
+          points.forEach((point) => {
+            if (point.isBusStop !== 'Y') return;
 
-          const latitude = Number(point.latitude);
-          const longitude = Number(point.longitude);
-          if (Number.isNaN(latitude) || Number.isNaN(longitude)) return;
+            const latitude = Number(point.latitude);
+            const longitude = Number(point.longitude);
+            if (Number.isNaN(latitude) || Number.isNaN(longitude)) return;
 
-          const stopId = point.stopCode?.trim() || `${routeId}-${point.patternPointName}`;
-          const existing = stopById.get(stopId);
+            const stopId = point.stopCode?.trim() || `${routeId}-${pattern.name}-${point.patternPointName}`;
+            if (stopById.has(stopId)) return;
 
-          if (existing) {
-            if (!existing.routes.includes(routeId)) {
-              existing.routes.push(routeId);
-            }
-            return;
-          }
-
-          stopById.set(stopId, {
-            id: stopId,
-            code: point.stopCode?.trim() || undefined,
-            name: point.patternPointName,
-            latitude,
-            longitude,
-            routes: [routeId],
+            stopById.set(stopId, {
+              id: stopId,
+              code: point.stopCode?.trim() || undefined,
+              name: point.patternPointName,
+              latitude,
+              longitude,
+              routes: [routeId],
+            });
           });
-        });
-      });
 
-      return Array.from(stopById.values()).sort((a, b) => a.name.localeCompare(b.name));
+          const stops = Array.from(stopById.values());
+          if (stops.length === 0) return null;
+
+          return {
+            id: `${routeId}-${pattern.name}`,
+            routeId,
+            patternName: pattern.name,
+            label: `Cycle ${index + 1}`,
+            stops,
+          } satisfies RouteStopCycle;
+        })
+        .filter((cycle): cycle is RouteStopCycle => cycle !== null);
     },
   });
 }

@@ -1,0 +1,5 @@
+media/mod_bt_map/js/AnimatedMarker.js
+media/mod_bt_map/js/bootstrap.min.js
+media/mod_bt_map/js/leaflet-src.js
+media/mod_bt_map/js/lib.js
+media/mod_bt_map/js/moment.js
