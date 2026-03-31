@@ -3,16 +3,16 @@
  * Fetches and manages all routes
  */
 
-import { useQuery } from '@tanstack/react-query';
-import { fetchRoutes } from '@/services/api/passioGO';
-import { REFRESH_INTERVALS, STALE_TIMES } from '@/constants/config';
+import { STALE_TIMES } from '@/constants/config';
+import { fetchRoutes } from '@/services/api/btApi';
 import { Route } from '@/types/transit';
+import { useQuery } from '@tanstack/react-query';
 
 export function useRoutes() {
   return useQuery({
     queryKey: ['routes'],
     queryFn: async (): Promise<Route[]> => {
-      // TODO: Implement transformation from PassioRoute to Route
+      // Transformation implemented; returns empty until route metadata API is confirmed
       const data = await fetchRoutes();
       return data.map((route) => ({
         id: route.id,

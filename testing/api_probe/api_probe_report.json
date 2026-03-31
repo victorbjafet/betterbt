@@ -1,0 +1,115 @@
+{
+  "base": "https://ridebt.org/index.php?option=com_ajax&module=bt_map&format=json&Itemid=101",
+  "methods": {
+    "getBuses": {
+      "status": 200,
+      "ok": true,
+      "summary": "list(25)",
+      "data_len": 25
+    },
+    "getRoutes": {
+      "status": 200,
+      "ok": true,
+      "summary": "dict(22)",
+      "data_len": 22
+    },
+    "getRoutePatterns": {
+      "status": 200,
+      "ok": true,
+      "summary": "list(38)",
+      "data_len": 38
+    },
+    "getPatternPoints": {
+      "status": 200,
+      "ok": true,
+      "summary": "list(1)",
+      "data_len": 1
+    },
+    "getNextDeparturesForStop": {
+      "status": 200,
+      "ok": true,
+      "summary": "list(0)",
+      "data_len": 0
+    },
+    "getActiveAlerts": {
+      "status": 200,
+      "ok": true,
+      "summary": "list(1)",
+      "data_len": 1
+    }
+  },
+  "pattern_points": {
+    "CAS to Orange": {
+      "status": 200,
+      "ok": true,
+      "summary": "list(48)",
+      "data_len": 48,
+      "sample": {
+        "patternPointName": "Maroon Bay 5",
+        "latitude": "37.23133",
+        "longitude": "-80.425",
+        "isBusStop": "Y",
+        "stopCode": "8005"
+      }
+    },
+    "PRG": {
+      "status": 200,
+      "ok": true,
+      "summary": "list(91)",
+      "data_len": 91,
+      "sample": {
+        "patternPointName": "Orange Bay 13",
+        "latitude": "37.23045",
+        "longitude": "-80.4265",
+        "isBusStop": "Y",
+        "stopCode": "8113"
+      }
+    },
+    "CRC OB": {
+      "status": 200,
+      "ok": true,
+      "summary": "list(153)",
+      "data_len": 153,
+      "sample": {
+        "patternPointName": "Orange Bay 16",
+        "latitude": "37.23085",
+        "longitude": "-80.427",
+        "isBusStop": "Y",
+        "stopCode": "8116"
+      }
+    },
+    "HXP FR": {
+      "status": 200,
+      "ok": true,
+      "summary": "list(81)",
+      "data_len": 81,
+      "sample": {
+        "patternPointName": "Oak Lane North",
+        "latitude": "37.22634",
+        "longitude": "-80.4374",
+        "isBusStop": "Y",
+        "stopCode": "1118"
+      }
+    }
+  },
+  "next_departures": {
+    "1143": {
+      "status": 200,
+      "ok": true,
+      "summary": "list(0)",
+      "data_len": 0
+    },
+    "1303": {
+      "status": 200,
+      "ok": true,
+      "summary": "list(0)",
+      "data_len": 0
+    },
+    "1204": {
+      "status": 200,
+      "ok": true,
+      "summary": "list(0)",
+      "data_len": 0
+    }
+  }
+}

@@ -1,11 +1,10 @@
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import MapView from '@/components/map/MapView';
 import { AlertBanner } from '@/components/ui/AlertBanner';
 import { useAlerts } from '@/hooks/useAlerts';
 import { useBusPositions } from '@/hooks/useBuses';
 import { useTheme } from '@/hooks/useTheme';
+import { StyleSheet, Text, View } from 'react-native';
 
 export default function LiveMapScreen() {
   const theme = useTheme();
@@ -37,7 +36,11 @@ export default function LiveMapScreen() {
 
       <View style={[styles.statusBar, { backgroundColor: theme.SURFACE, borderTopColor: theme.BORDER }]}>
         <Text style={[styles.statusText, { color: theme.TEXT }]}>
-          {source === 'live' ? '● Live Tracking' : '◌ Predicted'}
+          {source === 'live'
+            ? '● Live Tracking'
+            : source === 'loading'
+              ? '◌ Loading'
+              : '◌ Predicted'}
         </Text>
         <Text style={[styles.busCount, { color: theme.TEXT_SECONDARY }]}>
           {buses.length} buses active

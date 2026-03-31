@@ -1,0 +1,813 @@
+
+<!DOCTYPE HTML>
+<html lang="en">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+  <script src="https://use.fontawesome.com/cd37609570.js"></script>
+  <base href="https://ridebt.org/" />
+	<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+	<meta name="generator" content="Joomla! - Open Source Content Management" />
+	<title>Blacksburg Transit</title>
+	<link href="/?format=feed&amp;type=rss" rel="alternate" type="application/rss+xml" title="RSS 2.0" />
+	<link href="/?format=feed&amp;type=atom" rel="alternate" type="application/atom+xml" title="Atom 1.0" />
+	<link href="/plugins/content/zaparticle/plugin.css" rel="stylesheet" type="text/css" />
+	<link href="/media/jui/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
+	<link href="/media/jui/css/bootstrap-responsive.css" rel="stylesheet" type="text/css" />
+	<link href="/templates/bt4u/stylesheets/style.css" rel="stylesheet" type="text/css" />
+	<link href="/templates/bt4u/stylesheets/custom.css" rel="stylesheet" type="text/css" />
+	<link href="/media/system/css/modal.css?c854ad790830d0672d0e59e1b9d76804" rel="stylesheet" type="text/css" />
+	<link href="/components/com_zcalendar/assets/css/common.css" rel="stylesheet" type="text/css" />
+	<link href="/components/com_zcalendar/assets/css/upcoming.css" rel="stylesheet" type="text/css" />
+	<link href="/components/com_zcalendar/assets/css/zfont.css" rel="stylesheet" type="text/css" />
+	<link href="/components/com_zcalendar/assets/themes/basic_blue/theme.css" rel="stylesheet" type="text/css" />
+	<link href="/plugins/zapcalendar/catcontrol/plugin.css" rel="stylesheet" type="text/css" />
+	<link href="/plugins/zapcalendar/title/plugin.css" rel="stylesheet" type="text/css" />
+	<link href="/plugins/zapcalendar/monthheader/plugin.css" rel="stylesheet" type="text/css" />
+	<link href="https://ridebt.org/media/mod_bt_map/css/leaflet.css" rel="stylesheet" type="text/css" />
+	<link href="https://ridebt.org/media/mod_bt_alerts/css/mod_bt_alerts.css" rel="stylesheet" type="text/css" />
+	<link href="/modules/mod_jux_megamenu/assets/css/style.css" rel="stylesheet" type="text/css" />
+	<link href="/modules/mod_jux_megamenu/assets/css/animate.css" rel="stylesheet" type="text/css" />
+	<link href="/modules/mod_jux_megamenu/assets/css/jux-font-awesome.css" rel="stylesheet" type="text/css" />
+	<link href="/modules/mod_jux_megamenu/assets/css/style/blackwhite.css" rel="stylesheet" type="text/css" />
+	<link href="/modules/mod_jux_megamenu/assets/css/stylec/custom-483.css" rel="stylesheet" type="text/css" />
+	<link href="/modules/mod_jux_megamenu/assets/css/stylec/custom-90.css" rel="stylesheet" type="text/css" />
+	<style type="text/css">
+#js-mainnav.blackwhite ul.level1 .childcontent { margin: -20px 0 0 170px; }
+		 #jux_memamenu483 ul.megamenu li.haschild.megacss:hover>div.childcontent.adddropdown,
+		 #jux_memamenu483 .childcontent.open>.dropdown-menu{
+		 	opacity:1;
+		 	-moz-animation:fadeInDown 400ms ease-in ;
+	       	-webkit-animation:fadeInDown 400ms ease-in ;
+	       	animation:fadeInDown 400ms ease-in ;
+	}#js-mainnav.blackwhite ul.level1 .childcontent { margin: -20px 0 0 245px; }
+		 #jux_memamenu90 ul.megamenu li.haschild.megacss:hover>div.childcontent.adddropdown,
+		 #jux_memamenu90 .childcontent.open>.dropdown-menu{
+		 	opacity:1;
+		 	-moz-animation:fadeInDown 400ms ease-in ;
+	       	-webkit-animation:fadeInDown 400ms ease-in ;
+	       	animation:fadeInDown 400ms ease-in ;
+	}
+	</style>
+	<script type="application/json" class="joomla-script-options new">{"csrf.token":"af9a7e7e4f5e14c5657e926bb827cde7","system.paths":{"root":"","base":""}}</script>
+	<script src="/media/jui/js/jquery.min.js?c854ad790830d0672d0e59e1b9d76804" type="text/javascript"></script>
+	<script src="/media/jui/js/jquery-noconflict.js?c854ad790830d0672d0e59e1b9d76804" type="text/javascript"></script>
+	<script src="/media/jui/js/jquery-migrate.min.js?c854ad790830d0672d0e59e1b9d76804" type="text/javascript"></script>
+	<script src="/media/system/js/caption.js?c854ad790830d0672d0e59e1b9d76804" type="text/javascript"></script>
+	<script src="/media/jui/js/bootstrap.min.js?c854ad790830d0672d0e59e1b9d76804" type="text/javascript"></script>
+	<script src="/media/system/js/mootools-core.js?c854ad790830d0672d0e59e1b9d76804" type="text/javascript"></script>
+	<script src="/media/system/js/core.js?c854ad790830d0672d0e59e1b9d76804" type="text/javascript"></script>
+	<script src="/media/system/js/mootools-more.js?c854ad790830d0672d0e59e1b9d76804" type="text/javascript"></script>
+	<script src="/media/system/js/modal.js?c854ad790830d0672d0e59e1b9d76804" type="text/javascript"></script>
+	<script src="https://ridebt.org/components/com_zcalendar/assets/js/zfrontend.js" type="text/javascript"></script>
+	<script src="https://ridebt.org/components/com_zcalendar/assets/js/module.js" type="text/javascript"></script>
+	<script src="https://ridebt.org/media/mod_bt_map/js/bootstrap.min.js" type="text/javascript"></script>
+	<script src="https://ridebt.org/media/mod_bt_map/js/leaflet-src.js" type="text/javascript"></script>
+	<script src="https://ridebt.org/media/mod_bt_map/js/AnimatedMarker.js" type="text/javascript"></script>
+	<script src="https://ridebt.org/media/mod_bt_map/js/moment.js" type="text/javascript"></script>
+	<script src="/modules/mod_jux_megamenu/assets/js/headroom.js" type="text/javascript"></script>
+	<script src="/modules/mod_jux_megamenu/assets/js/SmoothScroll.js" type="text/javascript"></script>
+	<script src="/modules/mod_jux_megamenu/assets/js/navAccordion.js" type="text/javascript"></script>
+	<script src="/modules/mod_jux_megamenu/assets/js/script.js" type="text/javascript"></script>
+	<script src="https://cdn.gtranslate.net/widgets/latest/flags.js" data-gt-orig-url="/" data-gt-orig-domain="ridebt.org" data-gt-widget-id="709" defer="defer" type="text/javascript"></script>
+	<script type="text/javascript">
+jQuery(window).on('load',  function() {
+				new JCaption('img.caption');
+			});jQuery(function($){ initTooltips(); $("body").on("subform-row-add", initTooltips); function initTooltips (event, container) { container = container || document;$(container).find(".hasTooltip").tooltip({"html": true,"container": "body"});} });
+		jQuery(function($) {
+			SqueezeBox.initialize({});
+			initSqueezeBox();
+			$(document).on('subform-row-add', initSqueezeBox);
+
+			function initSqueezeBox(event, container)
+			{
+				SqueezeBox.assign($(container || document).find('a.modal').get(), {
+					parse: 'rel'
+				});
+			}
+		});
+
+		window.jModalClose = function () {
+			SqueezeBox.close();
+		};
+
+		// Add extra modal close functionality for tinyMCE-based editors
+		document.onreadystatechange = function () {
+			if (document.readyState == 'interactive' && typeof tinyMCE != 'undefined' && tinyMCE)
+			{
+				if (typeof window.jModalClose_no_tinyMCE === 'undefined')
+				{
+					window.jModalClose_no_tinyMCE = typeof(jModalClose) == 'function'  ?  jModalClose  :  false;
+
+					jModalClose = function () {
+						if (window.jModalClose_no_tinyMCE) window.jModalClose_no_tinyMCE.apply(this, arguments);
+						tinyMCE.activeEditor.windowManager.close();
+					};
+				}
+
+				if (typeof window.SqueezeBoxClose_no_tinyMCE === 'undefined')
+				{
+					if (typeof(SqueezeBox) == 'undefined')  SqueezeBox = {};
+					window.SqueezeBoxClose_no_tinyMCE = typeof(SqueezeBox.close) == 'function'  ?  SqueezeBox.close  :  false;
+
+					SqueezeBox.close = function () {
+						if (window.SqueezeBoxClose_no_tinyMCE)  window.SqueezeBoxClose_no_tinyMCE.apply(this, arguments);
+						tinyMCE.activeEditor.windowManager.close();
+					};
+				}
+			}
+		};
+		initZ(2);function refreshCalendar2(){};refreshZ(2);window.gtranslateSettings = window.gtranslateSettings || {};window.gtranslateSettings['709'] = {"default_language":"en","languages":["en","zh-CN","zh-TW","ko","es"],"url_structure":"none","wrapper_selector":"#gt-wrapper-709","globe_size":60,"flag_size":32,"flag_style":"2d","custom_domains":null,"float_switcher_open_direction":"top","switcher_open_direction":"top","native_language_names":0,"add_new_line":1,"select_language_label":"Select Language","detect_browser_language":0,"custom_css":"","alt_flags":{"en":"usa"},"switcher_horizontal_position":"left","switcher_vertical_position":"bottom","horizontal_position":"inline","vertical_position":"inline"};
+	</script>
+
+  
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=UA-123159529-1"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+
+    function gtag() {
+      dataLayer.push(arguments);
+    }
+    gtag('js', new Date());
+
+    gtag('config', 'UA-123159529-1');
+  </script>
+  <style>
+    @media screen and (min-width: 480px) {
+      #snapshot {
+        min-height: 450px !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="searchbar">
+    <div class="container">
+      <div class="row">
+        <div id="topTranslate" class="col-lg-6 col-med-6 col-sm-12 col-xs-12">
+          		<div class="moduletable">
+						<div class="gtranslate_wrapper" id="gt-wrapper-709"></div>		</div>
+	
+        </div>
+        <div id="search" class="col-lg-6 col-med-6 col-sm-12 col-xs-12">
+          
+        </div>
+      </div>
+    </div>
+  </div>
+      <div id="topBar">
+      <div class="container">
+        <div class="row">
+          <!--<div id="topLeft" class="col-lg-3 col-med-3 col-sm-12 col-xs-12">		<div class="moduletable">
+						
+
+<div class="custom"  >
+	<p><strong><a href="tel:%2015404431500"><strong><i class="fa fa-phone"></i> </strong>(540) 443-1500</a></strong> (M-F 8 AM - 5 PM)</p>
+<p><strong><a href="/bt-jobs">We're hiring!</a></strong></p></div>
+		</div>
+	</div>-->
+          <div id="topLeft" class="col-lg-3 col-med-3 col-sm-12 col-xs-12">
+            		<div class="moduletable">
+						
+
+<div class="custom"  >
+	<div><a href="/"><img src="/images/BTlogoRGB.png" alt="Blacksburg Transit" width="292" height="90" /></a>&nbsp; &nbsp; &nbsp;</div></div>
+		</div>
+	
+          </div>
+          <div id="topRight" class="col-lg-9 col-med-9 col-sm-12 col-xs-12">
+            		<div class="moduletable">
+						
+
+<div class="custom"  >
+	<p><a href="mailto:ridebt@blacksburg.gov"><i class="fa fa-envelope"></i>&nbsp;ridebt@blacksburg.gov</a>&nbsp;<span><a href="https://bsky.app/profile/ridebt.org"><img src="/images/Bluesky_Primary_Logo.png" alt="Bluesky_Primary_Logo.png" width="32" height="28" /></a>&nbsp;<a href="https://www.instagram.com/ridebt/" target="_blank" rel="noopener"><img src="/images/Instagram_Primary_Logo.png" alt="Instagram_Primary_Logo.png" width="32" height="32" /></a>&nbsp;<a href="https://www.facebook.com/RideBT/" target="_blank" rel="noopener"><img src="/images/Facebook_Primary_Logo.png" alt="Facebook_Primary_Logo.png" width="32" height="32" /></a>&nbsp;<a href="https://www.youtube.com/@blacksburgtransit9570" target="_blank" rel="noopener"><img src="/images/YouTube.png" alt="YouTube.png" width="47" height="32" /></a>&nbsp;<a href="https://x.com/Ride_BT"><img src="/images/X_Primary_Logo.png" alt="X_Primary_Logo.png" width="31" height="32" /></a></span></p></div>
+		</div>
+	
+            		<div class="moduletable">
+						
+
+<div class="custom"  >
+	<p><strong><a href="tel:%2015404431500"><strong><i class="fa fa-phone"></i> </strong>(540) 443-1500</a></strong> (M-F 8 AM - 5 PM)</p>
+<p><strong><a href="/bt-jobs">We're hiring!</a></strong></p></div>
+		</div>
+	
+          </div>
+        </div><!-- end header row -->
+      </div>
+      <div class="clear height1">&nbsp;</div>
+    </div>
+    <header>
+    <div class="container">
+      <div class="row">
+        
+          <div id="headerRight" class="col-lg-12 col-med-12 col-sm-12 col-xs-12">
+            <nav>
+              		<div class="moduletable">
+						<div id="jux_memamenu90">
+	<div id="megamenucss" class="megamenucss90">
+		<div id="js-mainnav" class="clearfix megamenu horizontal right blackwhite sticky_right down noJS  megamenu">
+						<div id="CSS3-megaMenuToggle" class="megaMenuToggle">
+				<i class="jux-fa jux-fa-bars font-item-menu"></i>
+			</div>
+						<div class=" mainNav js-megamenu container   clearfix" id="js-meganav">
+<ul class="megamenu level0"><li  class="megacss first submenu-align-auto"><a href="/news-alerts"  class="megacss first " id="menu145" ><span class="menu-title"><i class="jux-fa  jux-"></i>News &amp; Events</span></a></li><li  class="megacss haschild submenu-align-auto"><a href="/routes-schedules"  class="megacss haschild " id="menu134" ><span class="menu-title"><i class="jux-fa  jux-"></i>Routes &amp; Schedules</span></a><div style='0' class="childcontent adddropdown clearfix cols1  ">
+<div class="childcontent-inner-wrap dropdown-menu">
+<div class="childcontent-inner clearfix" style="width: 275px;"><div class="megacol column1 first" style="width: 275px;"><ul class="megamenu level1"><li  class="megacss first submenu-align-auto"><a href="/routes-schedules"  class="megacss first " id="menu695" ><span class="menu-title"><i class="jux-fa  jux-"></i>Blacksburg</span></a></li><li  class="megacss submenu-align-auto"><a href="/routes-schedules/christiansburg"  class="megacss " id="menu135" ><span class="menu-title"><i class="jux-fa  jux-"></i>Christiansburg</span></a></li><li  class="megacss submenu-align-auto"><a href="/routes-schedules/game-day-service-football"  class="megacss " id="menu111" ><span class="menu-title"><i class="jux-fa  jux-"></i>Game Day Service: Football</span></a></li><li  class="megacss last submenu-align-auto"><a href="/routes-schedules/plan-a-trip"  class="megacss last " id="menu146" ><span class="menu-title"><i class="jux-fa  jux-"></i>Plan a Trip</span></a></li></ul></div></div>
+</div></div></li><li  class="megacss haschild submenu-align-auto"><a href="/hours-of-operation"  class="megacss haschild " id="menu147" ><span class="menu-title"><i class="jux-fa  jux-"></i>Hours &amp; Service Info</span></a><div style='0' class="childcontent adddropdown clearfix cols1  ">
+<div class="childcontent-inner-wrap dropdown-menu">
+<div class="childcontent-inner clearfix" style="width: 275px;"><div class="megacol column1 first" style="width: 275px;"><ul class="megamenu level1"><li  class="megacss first submenu-align-auto"><a href="/hours-service-info/service-calendar"  class="megacss first " id="menu148" ><span class="menu-title"><i class="jux-fa  jux-"></i>Service Calendar</span></a></li></ul></div></div>
+</div></div></li><li  class="megacss haschild submenu-align-auto"><a href="/bt-access/overview"  class="megacss haschild " id="menu106" ><span class="menu-title"><i class="jux-fa  jux-"></i>Paratransit Service</span></a><div style='0' class="childcontent adddropdown clearfix cols1  ">
+<div class="childcontent-inner-wrap dropdown-menu">
+<div class="childcontent-inner clearfix" style="width: 275px;"><div class="megacol column1 first" style="width: 275px;"><ul class="megamenu level1"><li  class="megacss first submenu-align-auto"><a href="/bt-access/overview"  class="megacss first " id="menu184" ><span class="menu-title"><i class="jux-fa  jux-"></i>Overview</span></a></li><li  class="megacss submenu-align-auto"><a href="/bt-access/americans-with-disabilities-act"  class="megacss " id="menu133" ><span class="menu-title"><i class="jux-fa  jux-"></i>Americans with Disabilities Act</span></a></li><li  class="megacss submenu-align-auto"><a href="/bt-access/bt-access-fare-information"  class="megacss " id="menu152" ><span class="menu-title"><i class="jux-fa  jux-"></i>Fare Information</span></a></li><li  class="megacss last submenu-align-auto"><a href="/bt-access/feedback-options"  class="megacss last " id="menu849" ><span class="menu-title"><i class="jux-fa  jux-"></i>Feedback Options</span></a></li></ul></div></div>
+</div></div></li><li  class="megacss haschild submenu-align-fullwidth"><span  class="megacss haschild " id="menu149" ><span class="menu-title"><i class="jux-fa  jux-"></i>BT Info</span></span><div style='0' class="childcontent adddropdown clearfix cols4  ">
+<div class="childcontent-inner-wrap dropdown-menu">
+<div class="childcontent-inner clearfix" style="width: 1100px;"><div class="megacol column1 first">		<div class="moduletable">
+						<ul class="nav menu mod-list">
+<li class="item-141"><a href="/riding-the-bus" class="divider">Riding the Bus</a></li><li class="item-719"><a href="/bt-app" >BT App</a></li><li class="item-118"><a href="/connections" >Connections</a></li><li class="item-119"><a href="/faq" >FAQ</a></li><li class="item-109"><a href="/fare-information" >Fare Information</a></li><li class="item-850"><a href="/feedback-options" >Feedback Options</a></li><li class="item-108"><a href="/hours-of-operation" >Hours of Operation</a></li><li class="item-192"><a href="/how-to-ride" >How to Ride</a></li><li class="item-137"><a href="/inclement-weather" >Inclement Weather</a></li><li class="item-844"><a href="/bikes-scooters-buses" >Large Objects on Buses</a></li><li class="item-115"><a href="/lost-found" >Lost &amp; Found</a></li><li class="item-113"><a href="/travel-tips" >Travel Tips</a></li></ul>
+		</div>
+	</div><div class="megacol column2">		<div class="moduletable">
+						<ul class="nav menu mod-list">
+<li class="item-459"><a href="/advertising-with-bt" class="divider">Advertising</a></li><li class="item-140"><a href="/advertising" >Advertising</a></li><li class="item-139"><a href="/advertising-faqs" >Advertising FAQs</a></li><li class="item-138"><a href="/advertising-policy" >Advertising Policy</a></li></ul>
+		</div>
+	</div><div class="megacol column3">		<div class="moduletable">
+						<ul class="nav menu mod-list">
+<li class="item-458"><a href="/about-blacksburg-transit" class="divider">About BT</a></li><li class="item-142"><a href="/about-bt" >About BT</a></li><li class="item-121"><a href="/general-information" >General Information</a></li><li class="item-837"><a href="/purchasing" >Purchasing Info</a></li><li class="item-194"><a href="/monthly-ridership" >Reports</a></li><li class="item-122"><a href="/staff-directory" >Staff Directory</a></li><li class="item-123"><a href="/transportation-planning" >Transportation Planning</a></li><li class="item-1002"><a href="/tsp" >Transit Strategic Plan</a></li></ul>
+		</div>
+	</div><div class="megacol column4 last">		<div class="moduletable">
+						<ul class="nav menu mod-list">
+<li class="item-144"><a href="/public-rights" class="divider">Public Rights</a></li><li class="item-107"><a href="/americans-with-disabilities-act" >Americans with Disabilities Act</a></li><li class="item-126"><a href="/disadvantaged-business-enterprise-dbe" >Disadvantaged Business Enterprise (DBE)</a></li><li class="item-125"><a href="/title-vi" >Title VI</a></li><li class="item-127"><a href="/we-serve-everyone" >We Serve Everyone</a></li></ul>
+		</div>
+	</div></div>
+</div></div></li><li  class="megacss haschild submenu-align-auto"><a href="/feedback"  class="megacss haschild " id="menu150" ><span class="menu-title"><i class="jux-fa  jux-"></i>Feedback</span></a><div style='0' class="childcontent adddropdown clearfix cols1  ">
+<div class="childcontent-inner-wrap dropdown-menu">
+<div class="childcontent-inner clearfix" style="width: 275px;"><div class="megacol column1 first" style="width: 275px;"><ul class="megamenu level1"><li  class="megacss first submenu-align-auto"><a href="/feedback/feedback" target="_blank"  class="megacss first " id="menu1067" ><span class="menu-title"><i class="jux-fa  jux-"></i>General Feedback</span></a></li><li  class="megacss submenu-align-auto"><a href="/feedback/feedback-para"  class="megacss " id="menu1068" ><span class="menu-title"><i class="jux-fa  jux-"></i>Paratransit Feedback</span></a></li><li  class="megacss submenu-align-auto"><a href="/feedback/feedback-options"  class="megacss " id="menu851" ><span class="menu-title"><i class="jux-fa  jux-"></i>Feedback Options</span></a></li><li  class="megacss last submenu-align-auto"><a href="/feedback/ada-rte"  class="megacss last " id="menu1071" ><span class="menu-title"><i class="jux-fa  jux-"></i>ADA Complaint on Route Buses</span></a></li></ul></div></div>
+</div></div></li><li  class="megacss last haschild submenu-align-auto"><a href="/joboverview"  class="megacss last haschild " id="menu951" ><span class="menu-title"><i class="jux-fa  jux-"></i>Work for BT</span></a><div style='0' class="childcontent adddropdown clearfix cols1  ">
+<div class="childcontent-inner-wrap dropdown-menu">
+<div class="childcontent-inner clearfix" style="width: 275px;"><div class="megacol column1 first" style="width: 275px;"><ul class="megamenu level1"><li  class="megacss first submenu-align-auto"><a href="/drive"  class="megacss first " id="menu954" ><span class="menu-title"><i class="jux-fa  jux-"></i>Part-time Driver</span></a></li><li  class="megacss submenu-align-auto"><a href="/op-3"  class="megacss " id="menu955" ><span class="menu-title"><i class="jux-fa  jux-"></i>Full-time Driver</span></a></li><li  class="megacss submenu-align-auto"><a href="/maintainer"  class="megacss " id="menu953" ><span class="menu-title"><i class="jux-fa  jux-"></i>Maintainer</span></a></li><li  class="megacss submenu-align-auto"><a href="/mast"  class="megacss " id="menu1057" ><span class="menu-title"><i class="jux-fa  jux-"></i>Mechanic Assistant</span></a></li><li  class="megacss last submenu-align-auto"><a href="/mechanic"  class="megacss last " id="menu952" ><span class="menu-title"><i class="jux-fa  jux-"></i>Mechanic</span></a></li></ul></div></div>
+</div></div></li></ul>
+</div>		</div>
+	</div>
+</div>
+
+<script type="text/javascript">
+    jQuery(document).ready(function ($) {
+
+        $(".megamenucss90 #CSS3-megaMenuToggle").click(function () {
+        	 // Menu on mobile
+                if(document.body.offsetWidth < 769){              
+                    if ((!$('.jux-custom-css').hasClass('jux-custom-css'))) {
+                        jQuery('.mainNav').navAccordion({
+                            expandButtonText: '<i class="jux-fa jux-fa-angle-down "></i>',  //Text inside of buttons can be HTML
+                            collapseButtonText: '<i class="jux-fa jux-fa-angle-up "></i>'
+                        });
+
+                    }
+                }
+                // end menu on mobile
+            $(".megamenucss90 .js-megamenu").toggleClass("dropdown-menucssjs-meganav");
+            $('.jux-custom-css').addClass('accordion-btn-wrap');
+        });
+  	    $(window).resize(function () {
+            if (document.body.offsetWidth > 768) {
+             	$(".megamenucss90 .js-megamenu").removeClass("dropdown-menucssjs-meganav"); 
+             	$('.jux-custom-css').removeClass('accordion-btn-wrap');
+            }
+            
+        });
+    });
+</script>
+
+
+
+			</div>
+	
+            </nav>
+          </div>
+
+          <div id="headerRightmobile" class="col-lg-12 col-med-12 col-sm-12 col-xs-12">
+            <nav>
+              		<div class="moduletable">
+						<div id="jux_memamenu483">
+	<div id="megamenucss" class="megamenucss483">
+		<div id="js-mainnav" class="clearfix megamenu horizontal left blackwhite sticky_center down noJS  megamenu">
+						<div id="CSS3-megaMenuToggle" class="megaMenuToggle">
+				<i class="jux-fa jux-fa-bars font-item-menu"></i>
+			</div>
+						<div class=" mainNav js-megamenu container   clearfix" id="js-meganav">
+<ul class="megamenu level0"><li  class="megacss first submenu-align-auto"><a href="/news-alerts"  class="megacss first " id="menu383" ><span class="menu-title"><i class="jux-fa  jux-"></i>News &amp; Alerts</span></a></li><li  class="megacss haschild submenu-align-auto"><a href="/feedback-mobile"  class="megacss haschild " id="menu396" ><span class="menu-title"><i class="jux-fa  jux-"></i>Feedback</span></a><div style='0' class="childcontent adddropdown clearfix cols1  ">
+<div class="childcontent-inner-wrap dropdown-menu">
+<div class="childcontent-inner clearfix" style="width: 200px;"><div class="megacol column1 first" style="width: 200px;"><ul class="megamenu level1"><li  class="megacss first submenu-align-auto"><a href="/feedback-mobile/feedback"  class="megacss first " id="menu1070" ><span class="menu-title"><i class="jux-fa  jux-"></i>General Feedback</span></a></li><li  class="megacss submenu-align-auto"><a href="/feedback-mobile/ada-feedback"  class="megacss " id="menu1069" ><span class="menu-title"><i class="jux-fa  jux-"></i>Paratransit Feedback</span></a></li><li  class="megacss submenu-align-auto"><a href="/feedback/feedback-options"  class="megacss " id="menu950" ><span class="menu-title"><i class="jux-fa  jux-"></i>Feedback Options</span></a></li><li  class="megacss last submenu-align-auto"><a href="/feedback-mobile/ada-rte"  class="megacss last " id="menu1072" ><span class="menu-title"><i class="jux-fa  jux-"></i>ADA Complaint on Route Buses</span></a></li></ul></div></div>
+</div></div></li><li  class="megacss submenu-align-auto"><a href="/routes-schedules/plan-a-trip"  class="megacss " id="menu384" ><span class="menu-title"><i class="jux-fa  jux-"></i>Plan a Trip</span></a></li><li  class="megacss haschild submenu-align-auto"><span  class="megacss haschild " id="menu385" ><span class="menu-title"><i class="jux-fa  jux-"></i>Routes &amp; Schedules</span></span><div style='0' class="childcontent adddropdown clearfix cols1  ">
+<div class="childcontent-inner-wrap dropdown-menu">
+<div class="childcontent-inner clearfix" style="width: 200px;"><div class="megacol column1 first" style="width: 200px;"><ul class="megamenu level1"><li  class="megacss first submenu-align-auto"><a href="/routes-schedules"  class="megacss first " id="menu717" ><span class="menu-title"><i class="jux-fa  jux-"></i>Routes &amp; Schedules</span></a></li><li  class="megacss submenu-align-auto"><a href="/routes-schedules"  class="megacss " id="menu718" ><span class="menu-title"><i class="jux-fa  jux-"></i>Blacksburg</span></a></li><li  class="megacss submenu-align-auto"><a href="/routes-schedules/christiansburg"  class="megacss " id="menu387" ><span class="menu-title"><i class="jux-fa  jux-"></i>Christiansburg</span></a></li><li  class="megacss last submenu-align-auto"><a href="/routes-schedules/game-day-service-football"  class="megacss last " id="menu386" ><span class="menu-title"><i class="jux-fa  jux-"></i>Game Day Service: Football</span></a></li></ul></div></div>
+</div></div></li><li  class="megacss submenu-align-auto"><a href="/hours-of-operation"  class="megacss " id="menu389" ><span class="menu-title"><i class="jux-fa  jux-"></i>Hours &amp; Service Info</span></a></li><li  class="megacss submenu-align-auto"><a href="/hours-service-info/service-calendar"  class="megacss " id="menu390" ><span class="menu-title"><i class="jux-fa  jux-"></i>Service Calendar</span></a></li><li  class="megacss haschild submenu-align-auto"><span  class="megacss haschild " id="menu391" ><span class="menu-title"><i class="jux-fa  jux-"></i>Paratransit Service</span></span><div style='0' class="childcontent adddropdown clearfix cols1  ">
+<div class="childcontent-inner-wrap dropdown-menu">
+<div class="childcontent-inner clearfix" style="width: 200px;"><div class="megacol column1 first" style="width: 200px;"><ul class="megamenu level1"><li  class="megacss first submenu-align-auto"><a href="/bt-access/overview"  class="megacss first " id="menu392" ><span class="menu-title"><i class="jux-fa  jux-"></i>Overview</span></a></li><li  class="megacss submenu-align-auto"><a href="/bt-access/americans-with-disabilities-act"  class="megacss " id="menu394" ><span class="menu-title"><i class="jux-fa  jux-"></i>Americans with Disabilities Act</span></a></li><li  class="megacss submenu-align-auto"><a href="/bt-access/bt-access-fare-information"  class="megacss " id="menu393" ><span class="menu-title"><i class="jux-fa  jux-"></i>Fare Information</span></a></li><li  class="megacss last submenu-align-auto"><a href="/feedback-options"  class="megacss last " id="menu943" ><span class="menu-title"><i class="jux-fa  jux-"></i>Feedback Options</span></a></li></ul></div></div>
+</div></div></li><li  class="megacss last haschild submenu-align-auto"><span  class="megacss last haschild " id="menu395" ><span class="menu-title"><i class="jux-fa  jux-"></i>BT Information</span></span><div style='0' class="childcontent adddropdown clearfix cols1  ">
+<div class="childcontent-inner-wrap dropdown-menu">
+<div class="childcontent-inner clearfix" style="width: 200px;"><div class="megacol column1 first" style="width: 200px;"><ul class="megamenu level1"><li  class="megacss first haschild submenu-align-auto"><span  class="megacss first haschild " id="menu397" ><span class="menu-title"><i class="jux-fa  jux-"></i>Riding the Bus</span></span><div style='0' class="childcontent adddropdown clearfix cols1  ">
+<div class="childcontent-inner-wrap dropdown-menu">
+<div class="childcontent-inner clearfix" style="width: 200px;"><div class="megacol column1 first" style="width: 200px;"><ul class="megamenu level2"><li  class="megacss first submenu-align-auto"><a href="/bt-app"  class="megacss first " id="menu720" ><span class="menu-title"><i class="jux-fa  jux-"></i>BT App</span></a></li><li  class="megacss submenu-align-auto"><a href="/connections"  class="megacss " id="menu405" ><span class="menu-title"><i class="jux-fa  jux-"></i>Connections</span></a></li><li  class="megacss submenu-align-auto"><a href="/faq"  class="megacss " id="menu945" ><span class="menu-title"><i class="jux-fa  jux-"></i>FAQ</span></a></li><li  class="megacss submenu-align-auto"><a href="/fare-information"  class="megacss " id="menu403" ><span class="menu-title"><i class="jux-fa  jux-"></i>Fare Information</span></a></li><li  class="megacss submenu-align-auto"><a href="/feedback-options"  class="megacss " id="menu946" ><span class="menu-title"><i class="jux-fa  jux-"></i>Feedback Options</span></a></li><li  class="megacss submenu-align-auto"><a href="/hours-of-operation"  class="megacss " id="menu401" ><span class="menu-title"><i class="jux-fa  jux-"></i>Hours of Operation</span></a></li><li  class="megacss submenu-align-auto"><a href="/how-to-ride"  class="megacss " id="menu404" ><span class="menu-title"><i class="jux-fa  jux-"></i>How to Ride</span></a></li><li  class="megacss submenu-align-auto"><a href="/inclement-weather"  class="megacss " id="menu406" ><span class="menu-title"><i class="jux-fa  jux-"></i>Inclement Weather</span></a></li><li  class="megacss submenu-align-auto"><a href="/bikes-scooters-buses"  class="megacss " id="menu947" ><span class="menu-title"><i class="jux-fa  jux-"></i>Large Objects on Buses</span></a></li><li  class="megacss submenu-align-auto"><a href="/lost-found"  class="megacss " id="menu400" ><span class="menu-title"><i class="jux-fa  jux-"></i>Lost &amp; Found</span></a></li><li  class="megacss last submenu-align-auto"><a href="/travel-tips"  class="megacss last " id="menu398" ><span class="menu-title"><i class="jux-fa  jux-"></i>Travel Tips</span></a></li></ul></div></div>
+</div></div></li><li  class="megacss haschild submenu-align-auto"><span  class="megacss haschild " id="menu407" ><span class="menu-title"><i class="jux-fa  jux-"></i>Advertising</span></span><div style='0' class="childcontent adddropdown clearfix cols1  ">
+<div class="childcontent-inner-wrap dropdown-menu">
+<div class="childcontent-inner clearfix" style="width: 200px;"><div class="megacol column1 first" style="width: 200px;"><ul class="megamenu level2"><li  class="megacss first submenu-align-auto"><a href="/advertising"  class="megacss first " id="menu408" ><span class="menu-title"><i class="jux-fa  jux-"></i>Advertising Overview</span></a></li><li  class="megacss submenu-align-auto"><a href="/advertising-faqs"  class="megacss " id="menu409" ><span class="menu-title"><i class="jux-fa  jux-"></i>Advertising FAQs</span></a></li><li  class="megacss last submenu-align-auto"><a href="/advertising-policy"  class="megacss last " id="menu410" ><span class="menu-title"><i class="jux-fa  jux-"></i>Advertising Policy</span></a></li></ul></div></div>
+</div></div></li><li  class="megacss haschild submenu-align-auto"><span  class="megacss haschild " id="menu411" ><span class="menu-title"><i class="jux-fa  jux-"></i>About BT</span></span><div style='0' class="childcontent adddropdown clearfix cols1  ">
+<div class="childcontent-inner-wrap dropdown-menu">
+<div class="childcontent-inner clearfix" style="width: 200px;"><div class="megacol column1 first" style="width: 200px;"><ul class="megamenu level2"><li  class="megacss first submenu-align-auto"><a href="/about-bt"  class="megacss first " id="menu412" ><span class="menu-title"><i class="jux-fa  jux-"></i>About BT Overview</span></a></li><li  class="megacss submenu-align-auto"><a href="/?Itemid=193"  class="megacss " id="menu419" ><span class="menu-title"><i class="jux-fa  jux-"></i>BT Projects</span></a></li><li  class="megacss submenu-align-auto"><a href="/general-information"  class="megacss " id="menu413" ><span class="menu-title"><i class="jux-fa  jux-"></i>General Information</span></a></li><li  class="megacss submenu-align-auto"><a href="/?Itemid=932"  class="megacss " id="menu948" ><span class="menu-title"><i class="jux-fa  jux-"></i>Job Opportunities</span></a></li><li  class="megacss submenu-align-auto"><a href="/purchasing"  class="megacss " id="menu949" ><span class="menu-title"><i class="jux-fa  jux-"></i>Purchasing Info</span></a></li><li  class="megacss submenu-align-auto"><a href="/monthly-ridership"  class="megacss " id="menu418" ><span class="menu-title"><i class="jux-fa  jux-"></i>Reports</span></a></li><li  class="megacss submenu-align-auto"><a href="/staff-directory"  class="megacss " id="menu414" ><span class="menu-title"><i class="jux-fa  jux-"></i>Staff Directory</span></a></li><li  class="megacss last submenu-align-auto"><a href="/transportation-planning"  class="megacss last " id="menu416" ><span class="menu-title"><i class="jux-fa  jux-"></i>Transportation Planning</span></a></li></ul></div></div>
+</div></div></li><li  class="megacss last haschild submenu-align-auto"><span  class="megacss last haschild " id="menu423" ><span class="menu-title"><i class="jux-fa  jux-"></i>Public Rights</span></span><div style='0' class="childcontent adddropdown clearfix cols1  ">
+<div class="childcontent-inner-wrap dropdown-menu">
+<div class="childcontent-inner clearfix" style="width: 200px;"><div class="megacol column1 first" style="width: 200px;"><ul class="megamenu level2"><li  class="megacss first submenu-align-auto"><a href="/americans-with-disabilities-act"  class="megacss first " id="menu427" ><span class="menu-title"><i class="jux-fa  jux-"></i>Americans with Disabilities Act</span></a></li><li  class="megacss submenu-align-auto"><a href="/disadvantaged-business-enterprise-dbe"  class="megacss " id="menu425" ><span class="menu-title"><i class="jux-fa  jux-"></i>Disadvantaged Business Enterprise (DBE)</span></a></li><li  class="megacss submenu-align-auto"><a href="/title-vi"  class="megacss " id="menu424" ><span class="menu-title"><i class="jux-fa  jux-"></i>Title VI</span></a></li><li  class="megacss last submenu-align-auto"><a href="/we-serve-everyone"  class="megacss last " id="menu426" ><span class="menu-title"><i class="jux-fa  jux-"></i>We Serve Everyone</span></a></li></ul></div></div>
+</div></div></li></ul></div></div>
+</div></div></li></ul>
+</div>		</div>
+	</div>
+</div>
+
+<script type="text/javascript">
+    jQuery(document).ready(function ($) {
+
+        $(".megamenucss483 #CSS3-megaMenuToggle").click(function () {
+        	 // Menu on mobile
+                if(document.body.offsetWidth < 769){              
+                    if ((!$('.jux-custom-css').hasClass('jux-custom-css'))) {
+                        jQuery('.mainNav').navAccordion({
+                            expandButtonText: '<i class="jux-fa jux-fa-angle-down "></i>',  //Text inside of buttons can be HTML
+                            collapseButtonText: '<i class="jux-fa jux-fa-angle-up "></i>'
+                        });
+
+                    }
+                }
+                // end menu on mobile
+            $(".megamenucss483 .js-megamenu").toggleClass("dropdown-menucssjs-meganav");
+            $('.jux-custom-css').addClass('accordion-btn-wrap');
+        });
+  	    $(window).resize(function () {
+            if (document.body.offsetWidth > 768) {
+             	$(".megamenucss483 .js-megamenu").removeClass("dropdown-menucssjs-meganav"); 
+             	$('.jux-custom-css').removeClass('accordion-btn-wrap');
+            }
+            
+        });
+    });
+</script>
+
+
+
+			</div>
+	
+            </nav>
+          </div>
+
+              </div><!-- end header row -->
+    </div>
+  </header>
+
+      <section id="alert">
+      		<div class="moduletable">
+						<button class="btn" id="alertToggle" data-toggle="collapse" data-target="#bt_alerts" type="button">
+  Show Alerts (1)
+</button>
+<a href="/hours-service-info" id="service-level" class="service-level"></a>
+  <div id="bt_alerts" class="collapse show bt_alerts">
+    <div class="well">
+      <div class="accordion" id="alertsAccordion">
+                            <div class="accordion-group">
+            <div class="accordion-heading">
+              <a class="accordion-toggle" data-toggle="collapse" data-parent="#alertsAccordion" href="#collapse1396">
+                Tuesday, 3/31 - BMR, CRC, & PHB Not On Map              </a>
+            </div>
+            <div id="collapse1396" class="accordion-body collapse show">
+              <div class="accordion-inner">
+                <p>While they are not showing up on the map, they are still running.</p>
+                <p><strong>Type:</strong> Route</p>
+                <p><strong>Cause:</strong> Technical Problem</p>
+                <p><strong>Effect:</strong> Other</p>
+		<p><b>Routes Affected:</b> BMR, CRC, PHB</p>                <p><strong>More Info:</strong> <a href="https://ridebt.org/news-alerts/561-technical-difficulties-2" target="_blank">https://ridebt.org/news-alerts/561-technical-difficulties-2</a></p>
+              </div>
+            </div>
+          </div>
+              </div>
+    </div>
+  </div>
+  <script type="text/javascript">
+    function setCookie(cname, cvalue, exdays) {
+      const d = new Date();
+      d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
+      let expires = "expires=" + d.toUTCString();
+      document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+    }
+
+    function getCookie(cname) {
+      let name = cname + "=";
+      let decodedCookie = decodeURIComponent(document.cookie);
+      let ca = decodedCookie.split(';');
+      for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) == ' ') {
+          c = c.substring(1);
+        }
+        if (c.indexOf(name) == 0) {
+          return c.substring(name.length, c.length);
+        }
+      }
+      return "";
+    }
+
+    function deleteCookie(cname) {
+      let expires = "expires=Thu, 01 Jan 1970 00:00:00 UTC;"
+      document.cookie = cname + "=;" + expires + "path=/;"
+    }
+
+    jQuery(document).ready(function() {
+      if (getCookie("hideAlerts") === "") {
+        jQuery("#bt_alerts").addClass("in");
+      }
+
+      jQuery("#alertToggle").click(function(e) {
+        if (getCookie("hideAlerts") === "") {
+          setCookie("hideAlerts", "true", 1)
+        }
+        // deleteCookie("hideAlerts");
+      });
+
+      setServiceLevel();
+    });
+
+    function setServiceLevel() {
+      const serviceLevel = "Full Service";
+      const serviceLevelClass = serviceLevel.replace(/\s+/g, '-').toLowerCase();
+      var serviceLevelDiv = jQuery(".service-level");
+      serviceLevelDiv.append(serviceLevel);
+      serviceLevelDiv.addClass(serviceLevelClass);
+    }
+  
+  </script>
+
+		</div>
+	
+    </section>
+  
+      <section id="imageBar">
+      <div id="imageholder">
+        		<div class="moduletable">
+						
+<style type="css">
+  .leaflet-tile-container img {
+    -webkit-backface-visibility: hidden;:w
+
+  }
+</style>
+
+<div class="row" style="margin-bottom: 10px;">
+  <div class="col-md-12">
+    <img src="/media/mod_bt_map/img/ajax-loader.gif" id="loading" class="pull-right" style="display:none">
+  </div>
+</div>
+<div class="row">
+  <div class=" col-sm-12 col-md-12 col-lg-12">
+    <div id="bt_map" class="bt_map" style="width: 80%; height: 600px; margin-left: auto; margin-right: auto;">
+    </div>
+  </div>
+
+  <!--<script src="//cdn.polyfill.io/v2/polyfill.min.js"></script> broken link -->
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-polyfill/7.10.4/polyfill.min.js"></script>
+  <script type="text/javascript" src="/media/mod_bt_map/js/lib.js"></script>
+  <script type="text/javascript">
+    jQuery(document).ready(function() {
+      Main.init("https://ridebt.org/index.php?option=com_ajax&module=bt_map&method=getBuses&format=json&Itemid=101", "https://ridebt.org/index.php?option=com_ajax&module=bt_map&method=getRoutePatterns&format=json&Itemid=101", "https://ridebt.org/index.php?option=com_ajax&module=bt_map&method=getRoutes&format=json&Itemid=101");
+
+      // little hack to make the menus show up right
+      jQuery(".megamenu").on('mouseenter', function() {
+        jQuery('#bt_map').css('z-index', -10);
+      });
+
+      jQuery(".megamenu").on('mouseleave', function() {
+        jQuery('#bt_map').css('z-index', 0);
+      });
+    });
+  </script>		</div>
+			<div class="moduletable">
+						
+
+<div class="custom"  >
+	<table class="mapLegend" role="presentation">
+<tbody>
+<tr>
+<td><img src="/images/map-Legend/bus.png" alt="bus" width="32" height="32" /> - standard bus</td>
+<td><img src="/images/map-Legend/electric-Bus.png" alt="electric Bus" width="32" height="32" /> - electric bus</td>
+<td><img src="/images/map-Legend/solid-Line.png" alt="solid Line" width="66" height="32" /> - active route</td>
+<td><img src="/images/map-Legend/dotted-Line.png" alt="dotted Line" width="66" height="32" /> - inactive route</td>
+</tr>
+</tbody>
+</table>
+<!--<p style="text-align: center;"><strong><a href="/index.php/2-uncategorised/91-how-to-use-live-bus-map#howtouse">How to use Live Bus Map</a></strong></p>--></div>
+		</div>
+	
+              </div>
+    </section>
+    <!-- alerts use to be here-->
+    <section id="mainContent">
+    <div class="container">
+              <div class="row">
+          <article>
+                        <div class="blog-featured" itemscope itemtype="https://schema.org/Blog">
+
+
+
+</div>
+
+          </article>
+                  </div>
+          </div>
+  </section>
+          <section id="snapshot">
+      <div id="snapshot-image">
+        <div class="background-image">
+          		<div class="moduletable">
+						
+
+<div class="custom"  >
+	<div><img src="/images/snapshot-background.jpg" alt="snapshot background" /></div></div>
+		</div>
+	
+        </div>
+        <div id="snapshotcalendar">
+          <div class="container">
+            <div class="row">
+              <div id="snapleft" class="col-lg-2 col-med-2 col-sm-2 col-xs-12">
+                		<div class="moduletable">
+						
+
+<div class="custom"  >
+	<p><a href="/index.php/service-calendar"><img src="/images/calendar-icon.png" alt="calendar icon" /></a></p></div>
+		</div>
+	
+              </div>
+              <div id="snapmiddle" class="col-lg-8 col-med-8 col-sm-8 col-xs-12">
+                		<div class="moduletable">
+							<h3>Calendar</h3>
+						<div class='zc_body basic_blue'>
+<div class='zc_upcomingitem'  data-original-title=''>
+<table>
+<tr>
+<td style='width:2px;'>&nbsp;</td>
+<td >
+<div class='zc_event hasTooltip2'  data-original-title='' >
+<div class='zc_upcomingitem_title' >
+<a href='/index.php?option=com_zcalendar&amp;view=event&amp;id=6208&amp;calid=2&amp;Itemid=101&Itemid=148' target='_self'  style="background-color:#84b817;color:#333333;" ><span class='zc_cal_title' style="background-color:#84b817;color:#333333;">Full Service</span></a>
+</div>
+<div class='zc_upcomingitem_datetime'>
+<span class='zc_cal_datetime' style="background-color:#84b817;color:#333333;">Tuesday, March 31, 2026 </span>
+</div>
+
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class='zc_upcomingitem'  data-original-title=''>
+<table>
+<tr>
+<td style='width:2px;'>&nbsp;</td>
+<td >
+<div class='zc_event hasTooltip2'  data-original-title='' >
+<div class='zc_upcomingitem_title' >
+<a href='/index.php?option=com_zcalendar&amp;view=event&amp;id=6209&amp;calid=2&amp;Itemid=101&Itemid=148' target='_self'  style="background-color:#84b817;color:#333333;" ><span class='zc_cal_title' style="background-color:#84b817;color:#333333;">Full Service</span></a>
+</div>
+<div class='zc_upcomingitem_datetime'>
+<span class='zc_cal_datetime' style="background-color:#84b817;color:#333333;">Wednesday, April 01, 2026 </span>
+</div>
+
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class='zc_upcomingitem'  data-original-title=''>
+<table>
+<tr>
+<td style='width:2px;'>&nbsp;</td>
+<td >
+<div class='zc_event hasTooltip2'  data-original-title='' >
+<div class='zc_upcomingitem_title' >
+<a href='/index.php?option=com_zcalendar&amp;view=event&amp;id=6210&amp;calid=2&amp;Itemid=101&Itemid=148' target='_self'  style="background-color:#84b817;color:#333333;" ><span class='zc_cal_title' style="background-color:#84b817;color:#333333;">Full Service</span></a>
+</div>
+<div class='zc_upcomingitem_datetime'>
+<span class='zc_cal_datetime' style="background-color:#84b817;color:#333333;">Thursday, April 02, 2026 </span>
+</div>
+
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="modal hide fade" id="event-modal">
+	<div class="modal-header">
+		<button type="button" class="close" data-dismiss="modal">&#215;</button>
+		<h3>Event Details</h3>
+	</div>
+	<div class="modal-body" id="event-modal-body">
+	Loading content...	</div>
+	<div class="modal-footer">
+	</div>
+</div>
+<script>
+jQuery("#event-modal").on("hide", function () {
+	jQuery(this).removeData('modal');
+	jQuery("#event-modal-body").html("Loading content...");
+	refreshCalendar(2);
+});
+/*
+jQuery("#event-modal").on("show", function (e) {
+	e.stopPropagation();
+});
+*/
+</script>
+
+<div class="modal hide fade" id="edit-modal" tabindex="-1" role="dialog" aria-labelledby="edit-modal" aria-hidden="true">
+	<div class="modal-header">
+		<button type="button" class="close" data-dismiss="modal">&#215;</button>
+
+		<h3>Edit an event</h3>
+	</div>
+	<div class="modal-body" id="edit-modal-body" style="margin:0px;padding:0px;height:600px;max-height:400px;width:100%;" >
+	<iframe id="modal-edit-iframe" name="modal-edit-iframe" style="width:100%;height:99%;border:0px;">
+	</iframe>
+	</div>
+	<div class="modal-footer">
+                <button type="button" class="btn" style="float:right;" onclick="document.getElementById('modal-edit-iframe').contentWindow.Joomla.submitbutton('event.save');"><span class="jicon-ok"></span>&nbsp;
+                        Save</button>
+		<button type="button" class="btn btn-default" data-dismiss="modal" style="float:right;margin-right:10px;"><span class="jicon-cancel"></span>&nbsp;
+                        Cancel</button>
+	</div>
+</div>
+<script>
+jQuery("#modal-edit-iframe").contents().find('html').html("Loading content...");
+jQuery("#edit-modal").on("hidden", function () {
+	jQuery(this).removeData('modal');
+	jQuery("#modal-edit-iframe").contents().find('html').html("Loading content...");
+	refreshCalendar(2);
+});
+/*
+jQuery("#edit-modal").on("show", function (e) {
+	e.stopPropagation();
+});
+*/
+
+</script>
+
+<div class="modal modal-dialog hide fade" id="confirm-modal">
+	<div class="modal-header">
+		<button type="button" class="close" data-dismiss="modal">&#215;</button>
+	<h3>Confirmation Needed</h3>
+	</div>
+	<div class="modal-body" id="confirm-modal-body">
+	Loading content...	</div>
+</div>
+<script>
+jQuery("#confirm-modal").on("hidden", function () {
+  jQuery(this).removeData('modal');
+  jQuery("#confirm-modal-body").html("Loading content...");
+});
+</script>
+
+		</div>
+	
+              </div>
+              <div id="snapright" class="col-lg-2 col-med-2 col-sm-2 col-xs-12">
+                		<div class="moduletable">
+						
+
+<div class="custom"  >
+	<p><a href="/index.php/service-calendar"><img src="/images/calendar-icon.png" alt="calendar icon" /></a></p></div>
+		</div>
+	
+              </div>
+            </div>
+            <div class="row">
+              <div id="snapLegend" class="col-lg-12 col-med-12 col-sm-12 col-xs-12">
+                		<div class="moduletable">
+							<h3>Legend</h3>
+						
+
+<div class="custom"  >
+	<div class="row">
+<div class="col-lg-3 col-med-3 col-sm-3 col-xs-6">
+<p><img src="/images/legend/2025/Full_Service.jpg" alt="Green represents Full Service" width="15" height="15" class="pull-left" style="margin-right: 5px;" /> Full Service</p>
+<p><img src="/images/legend/2025/Full_Alt._Service.jpg" alt="Dark Green represents Exam Service" width="15" height="15" class="pull-left" style="margin-right: 5px;" /> Exam Service</p>
+</div>
+<div class="col-lg-3 col-med-3 col-sm-3 col-xs-6">
+<p><img src="/images/legend/2025/Int._Service.jpg" alt="Orange represents Intermediate Service" width="15" height="15" class="pull-left" style="margin-right: 5px;" /> Intermediate Service</p>
+</div>
+<div class="col-lg-3 col-med-3 col-sm-3 col-xs-6">
+<p><img src="/images/legend/2025/Reduced_Service.jpg" alt="Yellow represents Reduced Service" width="15" height="15" class="pull-left" style="margin-right: 5px;" /> Reduced Service</p>
+<p><img src="/images/legend/2025/Reduced_Alt._Service.jpg" alt="Brown represents holiday service" width="15" height="15" class="pull-left" style="margin-right: 5px;" /> Holiday Service</p>
+</div>
+<div class="col-lg-3 col-med-3 col-sm-3 col-xs-6">
+<p><img src="/images/legend/2025/No_Service.jpg" alt="Red represents No Service" width="15" height="15" class="pull-left" style="margin-right: 5px;" /> No Service</p>
+</div>
+<div class="col-lg-3 col-med-3 col-sm-3 col-xs-6">
+<p><img src="/images/legend/event.png" alt="Blue represents Events" class="pull-left" style="margin-right: 5px;" /> Events</p>
+</div>
+</div></div>
+		</div>
+	
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="clear">&nbsp;</div>
+    </section>
+        <section id="newsblog">
+      <div class="container">
+        <div class="row">
+          <div class="col-lg-6 col-med-6 col-sm-12 col-xs-12">
+            		<div class="moduletable">
+						
+
+<div class="custom"  >
+	<p><a href="/drive"></a></p>
+<p>&nbsp;<a href="/drive"><img src="/images/real_people_real_empoyees_real_jobs.jpg" alt="real_people_real_empoyees_real_jobs.jpg" width="400" height="360" /></a></p></div>
+		</div>
+	
+          </div>
+          <div class="col-lg-6 col-med-6 col-sm-12 col-xs-12 newspadding">
+            		<div class="moduletable">
+						
+
+<div class="custom"  >
+	<h2 class="homeHeader"><span>News &amp; Events</span></h2></div>
+		</div>
+			<div class="moduletable">
+						<div class="newsflash">
+					<h4 class="newsflash-title">
+			2026 Service Changes		</h4>
+
+
+	
+
+	<p><span style="font-size: 12pt;"><strong>All changes are subject to change. Last updated 2/13/26.</strong></span></p>
+<p><span style="font-size: 12pt;">Starting January 18, 2026, BT temporarily adjusted weekday service to accommodate 2 active recalls limiting battery capacity on our 28 electric buses.</span></p>
+
+
+	<a class="readmore" href="/service-changes">Read more ...</a>					<h4 class="newsflash-title">
+			Technical Difficulties		</h4>
+
+
+	
+
+	<p>We are having technical difficulties with buses not showing up on the live map or the BT App. Although the live track feature is not working for all vehicles, service is still running as usual.</p>
+<p><strong>Buses experiencing tracking issues 3/31/26:&nbsp;</strong></p>
+
+
+	<a class="readmore" href="/news-alerts/561-technical-difficulties-2">Read more ...</a>	</div>
+		</div>
+	
+          </div>
+        </div>
+      </div>
+    </section>
+                  <footer>
+      <div class="container">
+        <div class="row">
+          <div class="col-lg-6 col-med-6 col-sm-12 col-xs-12 footerLeft">
+            		<div class="moduletable">
+						
+
+<div class="custom"  >
+	<p><img src="/images/bt-logo-white.png" alt="blacksburg Transit" /></p></div>
+		</div>
+	
+          </div>
+          <div class="col-lg-6 col-med-6 col-sm-12 col-xs-12 footerRight">
+            		<div class="moduletable">
+						
+
+<div class="custom"  >
+	<p><strong><a href="/privacy-policy">Privacy Policy</a></strong></p>
+<p><strong> <i class="fa fa-phone"></i> <a href="tel:+15404431500">(540) 443-1500</a></strong> (M-F 8 AM - 5 PM)<br /><strong><i class="fa fa-envelope">&nbsp; &nbsp;</i><a href="mailto:ridebt@blacksburg.gov"></a> <a href="mailto:ridebt@blacksburg.gov">ridebt@blacksburg.gov</a></strong></p>
+<p><strong>Blacksburg Transit</strong><br /> 2800 Commerce St. <br /> Blacksburg, Virginia 24060-6656</p>
+<p><strong><a href="/images/documents/EEO_Policy_Statement_Signed_2024-07-11.pdf">An EEO</a></strong></p>
+<p><strong><a href="/bt-jobs">We're hiring!</a></strong></p></div>
+		</div>
+	
+          </div>
+        </div>
+      </div>
+    </footer>
+  
+  
+  <div id="system-message-container">
+	</div>
+
+
+</body>
+
+</html>

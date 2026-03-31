@@ -3,8 +3,16 @@
 # dependencies
 node_modules/
 
+# local python env
+.venv/
+venv/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+
 # Expo
 .expo/
+.expo-shared/
 dist/
 web-build/
 expo-env.d.ts
@@ -21,14 +29,26 @@ expo-env.d.ts
 # Metro
 .metro-health-check*
 
+# caches and reports
+.eslintcache
+coverage/
+.nyc_output/
+
 # debug
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+pnpm-debug.*
+*.log
 
 # macOS
 .DS_Store
+**/.DS_Store
 *.pem
+
+# editor files
+.vscode/
+.idea/
 
 # local env files
 .env*.local

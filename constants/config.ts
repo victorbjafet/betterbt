@@ -3,18 +3,16 @@
  * API endpoints, intervals, and system settings
  */
 
-// TODO: Replace with actual PassioGO System ID discovered from ridebt.org
-export const PASSIOGO_SYSTEM_ID = 'SYSTEM_ID_TBD';
-
 export const API_ENDPOINTS = {
-  PASSIOGO_BASE: 'https://passiogo.com/mapGetData.php',
+  BT_AJAX_BASE: 'https://ridebt.org/index.php?option=com_ajax&module=bt_map&format=json&Itemid=101',
+  BT_WEB_PROXY_BASE: 'https://api.codetabs.com/v1/proxy/?quest=',
   BT_CALENDAR: 'https://ridebt.org/index.php?option=com_zcalendar&...',
   BT_WEBSITE: 'https://ridebt.org',
 };
 
 // Data refresh intervals (in milliseconds)
 export const REFRESH_INTERVALS = {
-  VEHICLES: 15_000,        // Bus positions: 15 seconds
+  VEHICLES: 3_000,         // Bus positions: 3 seconds
   ARRIVALS: 20_000,        // ETAs at stop: 20 seconds
   ROUTES: 3_600_000,       // Route list: 1 hour (cached for session)
   STOPS: 3_600_000,        // Stop list: 1 hour (cached for session)
@@ -40,4 +38,4 @@ export const MAP_CONFIG = {
 };
 
 // CORS handling
-export const CORS_PROXY = null; // Set to proxy URL if PassioGO API fails with CORS
+export const CORS_PROXY = null; // Set to proxy URL if RideBT API fails with CORS

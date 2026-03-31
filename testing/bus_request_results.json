@@ -1,0 +1,36 @@
+{
+  "success": true,
+  "message": null,
+  "messages": null,
+  "data": [
+    {
+      "id": "6015",
+      "routeId": "CAS",
+      "stopId": "1143",
+      "patternName": "CAS to Orange",
+      "capacity": "34",
+      "percentOfCapacity": "42",
+      "tripStartOn": 1774845000000,
+      "gtfsTripId": "99c5dbbf-feef-43cf-a29c-be82881a4deb",
+      "gtfsBlockId": "ca436bf7-bf95-4e27-8ac7-43789c2155c5",
+      "states": [
+        {
+          "direction": "91",
+          "speed": "8",
+          "passengers": "34",
+          "isTimePoint": "N",
+          "isTripper": "",
+          "isBusAtStop": "N",
+          "latitude": 37.2277118333333,
+          "longitude": -80.4182805,
+          "realtimeLatitude": 37.2277118333333,
+          "realtimeLongitude": -80.4182805,
+          "patternPointId": 0,
+          "isProjected": false,
+          "isGenerated": false,
+          "version": 1774931586000
+        }
+      ]
+    }
+  ]
+}

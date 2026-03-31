@@ -1,6 +1,6 @@
 /**
  * Application-level Transit Types
- * These types are normalized/processed versions of PassioGO types
+ * These types are normalized/processed versions of RideBT API types
  */
 
 export interface Bus {
@@ -13,6 +13,11 @@ export interface Bus {
   longitude: number;
   speed: number;
   lastUpdated: Date;
+  currentStopId?: string;
+  capacity?: number;
+  occupancyPercent?: number;
+  passengers?: number;
+  isAtStop?: boolean;
 }
 
 export interface Route {

@@ -1,19 +1,15 @@
+import { STATIC_ROUTE_DEFINITIONS } from '@/constants/staticTransitData';
+
 /**
  * Color Palette, Theme Tokens, and Route Colors
  */
 
-export const ROUTE_COLORS: Record<string, { bg: string; text: string }> = {
-  HXP:     { bg: '#E31E24', text: '#FFFFFF' },
-  Local:   { bg: '#00A651', text: '#FFFFFF' },
-  '1':     { bg: '#0066CC', text: '#FFFFFF' },
-  '2':     { bg: '#FF8C00', text: '#FFFFFF' },
-  '3':     { bg: '#800080', text: '#FFFFFF' },
-  '4':     { bg: '#808000', text: '#FFFFFF' },
-  '5':     { bg: '#FF69B4', text: '#FFFFFF' },
-  '6':     { bg: '#008080', text: '#FFFFFF' },
-  '26':    { bg: '#FFD700', text: '#000000' },
-  DEFAULT: { bg: '#666666', text: '#FFFFFF' },
-};
+export const ROUTE_COLORS: Record<string, { bg: string; text: string }> =
+  STATIC_ROUTE_DEFINITIONS.reduce<Record<string, { bg: string; text: string }>>((acc, route) => {
+    acc[route.shortName] = { bg: route.color, text: route.textColor };
+    acc[route.id] = { bg: route.color, text: route.textColor };
+    return acc;
+  }, { DEFAULT: { bg: '#666666', text: '#FFFFFF' } });
 
 export interface Theme {
   PRIMARY: string;

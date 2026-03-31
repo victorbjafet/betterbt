@@ -1,0 +1,21 @@
+{
+  "success": true,
+  "message": null,
+  "messages": null,
+  "data": [
+    {
+      "id": "1389",
+      "typeName": "Agency",
+      "causeTypeName": "Technical Problem",
+      "effectTypeName": "Other",
+      "title": "Technical Issues - All Buses Still Running",
+      "message": "We\u2019re experiencing technical difficulties, but BT is still in service. Please see ridebt.org/schedules for service information.",
+      "affected": null,
+      "url": "https://ridebt.org/schedules",
+      "startOn": "1774951235",
+      "endOn": "1774976355",
+      "version": "2026-03-23T08:47:18.27-04:00",
+      "rank": null
+    }
+  ]
+}

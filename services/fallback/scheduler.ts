@@ -1,7 +1,7 @@
 /**
  * Fallback Scheduler
  * Phase 2: Generates predicted bus positions from static schedules
- * when live PassioGO tracking is unavailable
+ * when live RideBT API tracking is unavailable
  */
 
 import { Bus } from '@/types/transit';
