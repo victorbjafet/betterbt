@@ -1,50 +1,56 @@
-# Welcome to your Expo app 👋
+# BetterBT
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+BetterBT is a real-time bus tracking app for Blacksburg Transit (BT).
 
-## Get started
+It helps riders quickly answer three questions:
+1. Where is my bus right now?
+2. When will it reach my stop?
+3. Are there service alerts I should know about?
+
+## Project Goal
+
+The goal of BetterBT is to make BT travel easier and less stressful by giving riders fast, reliable, and easy-to-read transit information in one place.
+
+## Features
+
+- Live bus locations on a map
+- Route browsing with route-specific details
+- Stop pages with next arrival predictions
+- Service alerts and status indicators
+- Route and stop views with map overlays
+- Saved/favorite route support for quick access
+- Fallback scheduling logic for better resilience when data is limited
+- Mobile-first experience built with Expo and React Native
+
+## Quick Start
 
 1. Install dependencies
 
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+2. Run the app
 
-## Learn more
+```bash
+npx expo start
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+3. Open on your target platform
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- iOS simulator
+- Android emulator
+- Expo Go
+- Web
 
-## Join the community
+## Tech Stack
 
-Join our community of developers creating universal apps.
+- Expo
+- React Native
+- TypeScript
+- Expo Router
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Notes
+
+- API behavior and probe details are documented in `API_DOCUMENTATION.md`.
+- Planning notes are in `bt-app-plan.md`.
