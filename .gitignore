@@ -61,7 +61,15 @@ Thumbs.db
 .idea/
 
 # local env files
+.env
+.env.*
+!.env.example
 .env*.local
+
+# local temp artifacts
+*.tmp
+*.temp
+*.bak
 
 # typescript
 *.tsbuildinfo

@@ -5,7 +5,7 @@
  */
 
 import { MAP_CONFIG, REFRESH_INTERVALS } from '@/constants/config';
-import { distanceMeters, interpolateCoordinate, predictBusCoordinate } from '@/services/map/busPrediction';
+import { blendCoordinates, distanceMeters, interpolateCoordinate, predictBusCoordinate } from '@/services/map/busPrediction';
 import { Bus, RouteGeometryPath, Stop } from '@/types/transit';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -13,11 +13,23 @@ import MapView, { Marker, Polyline } from 'react-native-maps';
 import { BusMarker } from './BusMarker';
 import { StopMarker } from './StopMarker';
 
+const INITIAL_REGION = {
+  latitude: MAP_CONFIG.INITIAL_LATITUDE,
+  longitude: MAP_CONFIG.INITIAL_LONGITUDE,
+  latitudeDelta: 0.05,
+  longitudeDelta: 0.05,
+};
+
 interface MapViewProps {
   buses: Bus[];
   stops?: Stop[];
+  stopDeparturesById?: Record<string, string[]>;
   routePaths?: RouteGeometryPath[];
+  predictionRoutePaths?: RouteGeometryPath[];
   selectedRouteId?: string;
+  resetViewToken?: number;
+  fullscreenViewToken?: number;
+  layoutVersion?: number;
   focusedBus?: Bus | null;
   focusedStop?: Stop | null;
   onBusPress?: (bus: Bus) => void;
@@ -28,8 +40,13 @@ interface MapViewProps {
 export default function TransitMapView({
   buses,
   stops = [],
+  stopDeparturesById = {},
   routePaths = [],
+  predictionRoutePaths,
   selectedRouteId,
+  resetViewToken = 0,
+  fullscreenViewToken = 0,
+  layoutVersion = 0,
   focusedBus,
   focusedStop,
   onBusPress,
@@ -37,6 +54,10 @@ export default function TransitMapView({
   onMapPress,
 }: MapViewProps) {
   const SNAP_TO_REAL_POSITION_METERS = 28;
+  const LOW_MOVEMENT_THRESHOLD_METERS = 8;
+  const LOW_MOVEMENT_END_BLEND_FACTOR = 0.45;
+  const LOW_MOVEMENT_DURATION_MULTIPLIER = 1.6;
+  const STOP_SELECTION_RADIUS_METERS = 28;
 
   const mapRef = useRef<MapView>(null);
   const markerRefs = useRef<Record<string, any>>({});
@@ -47,12 +68,16 @@ export default function TransitMapView({
     durationMs: number;
   }>>({});
   const predictedEndpointRef = useRef<Record<string, { latitude: number; longitude: number }>>({});
+  const lastMarkerPressAtRef = useRef(0);
   const [isMapReady, setIsMapReady] = useState(false);
   const [displayBuses, setDisplayBuses] = useState<Bus[]>(buses);
   const lastAutoFocusedRouteKey = useRef<string | null>(null);
   const didAutoFitAllBuses = useRef(false);
   const lastFollowAtMs = useRef(0);
   const lastHandledFocusedStopId = useRef<string | null>(null);
+  const lastHandledResetToken = useRef(-1);
+  const lastHandledViewportToken = useRef('');
+  const lastFocusedBusPayloadTimestamp = useRef<number | null>(null);
 
   useEffect(() => {
     const now = Date.now();
@@ -72,7 +97,8 @@ export default function TransitMapView({
 
       const seeded = buses.map((bus) => {
         const realPosition = { latitude: bus.latitude, longitude: bus.longitude };
-        const predictedEnd = predictBusCoordinate(bus, now, routePaths, {
+        const predictionPaths = (predictionRoutePaths ?? routePaths).filter((path) => path.routeId === bus.routeId);
+        const predictedEnd = predictBusCoordinate(bus, now, predictionPaths, {
           stops,
           horizonSeconds: REFRESH_INTERVALS.VEHICLES / 1000,
         });
@@ -86,13 +112,22 @@ export default function TransitMapView({
           ? realPosition
           : (previousById.get(bus.id) ?? realPosition);
 
+        const movementMeters = distanceMeters(start, realPosition);
+        const hasLowMovement = movementMeters > 0 && movementMeters <= LOW_MOVEMENT_THRESHOLD_METERS;
+        const end = hasLowMovement
+          ? blendCoordinates(start, predictedEnd, LOW_MOVEMENT_END_BLEND_FACTOR)
+          : predictedEnd;
+        const durationMs = hasLowMovement
+          ? Math.round(REFRESH_INTERVALS.VEHICLES * LOW_MOVEMENT_DURATION_MULTIPLIER)
+          : REFRESH_INTERVALS.VEHICLES;
+
         nextTrackById[bus.id] = {
           start,
-          end: predictedEnd,
+          end,
           startedAtMs: now,
-          durationMs: REFRESH_INTERVALS.VEHICLES,
+          durationMs,
         };
-        nextPredictedEndpoints[bus.id] = predictedEnd;
+        nextPredictedEndpoints[bus.id] = end;
 
         return {
           ...bus,
@@ -106,7 +141,7 @@ export default function TransitMapView({
 
       return seeded;
     });
-  }, [buses, routePaths, stops]);
+  }, [buses, predictionRoutePaths, routePaths, stops]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -196,6 +231,39 @@ export default function TransitMapView({
     [selectedRouteId, stops]
   );
 
+  const selectNearestStopFromPoint = (latitude: number, longitude: number) => {
+    if (filteredStops.length === 0) return false;
+
+    const tappedPoint = { latitude, longitude };
+    let nearestStop: Stop | null = null;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    for (const stop of filteredStops) {
+      const stopPoint = { latitude: stop.latitude, longitude: stop.longitude };
+      const meters = distanceMeters(tappedPoint, stopPoint);
+      if (meters < nearestDistance) {
+        nearestDistance = meters;
+        nearestStop = stop;
+      }
+    }
+
+    // Keep generous geometry snapping but avoid selecting distant nearby stops.
+    if (!nearestStop || nearestDistance > STOP_SELECTION_RADIUS_METERS) return false;
+
+    lastMarkerPressAtRef.current = Date.now();
+    mapRef.current?.animateToRegion(
+      {
+        latitude: nearestStop.latitude,
+        longitude: nearestStop.longitude,
+        latitudeDelta: 0.008,
+        longitudeDelta: 0.008,
+      },
+      500
+    );
+    onStopPress?.(nearestStop);
+    return true;
+  };
+
   const focusedDisplayBus = useMemo(() => {
     if (!focusedBus) return null;
     return filteredBuses.find((bus) => bus.id === focusedBus.id) ?? null;
@@ -251,6 +319,28 @@ export default function TransitMapView({
   }, [focusedDisplayBus, isMapReady]);
 
   useEffect(() => {
+    if (!focusedDisplayBus || !isMapReady) {
+      lastFocusedBusPayloadTimestamp.current = null;
+      return;
+    }
+
+    const payloadTimestamp = focusedDisplayBus.lastUpdated.getTime();
+    if (lastFocusedBusPayloadTimestamp.current === payloadTimestamp) return;
+
+    const marker = markerRefs.current[focusedDisplayBus.id];
+    marker?.hideCallout?.();
+    const timerId = setTimeout(() => {
+      marker?.showCallout?.();
+    }, 40);
+
+    lastFocusedBusPayloadTimestamp.current = payloadTimestamp;
+
+    return () => {
+      clearTimeout(timerId);
+    };
+  }, [focusedDisplayBus, isMapReady]);
+
+  useEffect(() => {
     if (!focusedStop) {
       lastHandledFocusedStopId.current = null;
       return;
@@ -271,22 +361,88 @@ export default function TransitMapView({
     lastHandledFocusedStopId.current = focusedStop.id;
   }, [focusedStop, isMapReady]);
 
-  const initialRegion = {
-    latitude: MAP_CONFIG.INITIAL_LATITUDE,
-    longitude: MAP_CONFIG.INITIAL_LONGITUDE,
-    latitudeDelta: 0.05,
-    longitudeDelta: 0.05,
-  };
+  useEffect(() => {
+    if (!isMapReady) return;
+    if (resetViewToken <= 0) return;
+    if (lastHandledResetToken.current === resetViewToken) return;
+
+    const allBusCoordinates = filteredBuses.map((bus) => ({ latitude: bus.latitude, longitude: bus.longitude }));
+    if (allBusCoordinates.length > 0) {
+      fitToBusCoordinates(allBusCoordinates);
+    } else {
+      mapRef.current?.animateToRegion(INITIAL_REGION, 550);
+    }
+
+    lastAutoFocusedRouteKey.current = null;
+    didAutoFitAllBuses.current = false;
+    lastFollowAtMs.current = 0;
+    lastHandledFocusedStopId.current = null;
+    lastHandledResetToken.current = resetViewToken;
+  }, [filteredBuses, isMapReady, resetViewToken]);
+
+  useEffect(() => {
+    if (!isMapReady) return;
+    if (fullscreenViewToken <= 0 && layoutVersion <= 0) return;
+
+    const viewportToken = `${fullscreenViewToken}:${layoutVersion}`;
+    if (lastHandledViewportToken.current === viewportToken) return;
+
+    if (focusedDisplayBus) {
+      mapRef.current?.animateToRegion(
+        {
+          latitude: focusedDisplayBus.latitude,
+          longitude: focusedDisplayBus.longitude,
+          latitudeDelta: 0.008,
+          longitudeDelta: 0.008,
+        },
+        650
+      );
+      markerRefs.current[focusedDisplayBus.id]?.showCallout?.();
+    } else if (selectedRouteId) {
+      const routeCoordinates = routePaths.flatMap((path) => path.coordinates);
+      const busCoordinates = filteredBuses.map((bus) => ({ latitude: bus.latitude, longitude: bus.longitude }));
+      const focusCoordinates = routeCoordinates.length > 0 ? routeCoordinates : busCoordinates;
+
+      if (focusCoordinates.length > 0) {
+        fitToBusCoordinates(focusCoordinates);
+      }
+    } else {
+      const allBusCoordinates = filteredBuses.map((bus) => ({ latitude: bus.latitude, longitude: bus.longitude }));
+      if (allBusCoordinates.length > 0) {
+        fitToBusCoordinates(allBusCoordinates);
+      } else {
+        mapRef.current?.animateToRegion(INITIAL_REGION, 550);
+      }
+    }
+
+    lastHandledViewportToken.current = viewportToken;
+  }, [filteredBuses, focusedDisplayBus, fullscreenViewToken, isMapReady, layoutVersion, routePaths, selectedRouteId]);
 
   return (
     <View style={styles.container}>
       <MapView
         ref={mapRef}
         style={styles.map}
-        initialRegion={initialRegion}
+        initialRegion={INITIAL_REGION}
         onMapReady={() => setIsMapReady(true)}
-        onPress={() => onMapPress?.()}
-        onPanDrag={() => onMapPress?.()}
+        onPress={(event) => {
+          const elapsedSinceMarkerPress = Date.now() - lastMarkerPressAtRef.current;
+          if (elapsedSinceMarkerPress < 300) return;
+
+          // Ignore marker-originated map press events so marker selection is preserved.
+          if (event.nativeEvent.action === 'marker-press') return;
+
+          const coordinate = event.nativeEvent.coordinate;
+          if (
+            selectedRouteId &&
+            coordinate &&
+            selectNearestStopFromPoint(coordinate.latitude, coordinate.longitude)
+          ) {
+            return;
+          }
+
+          onMapPress?.();
+        }}
       >
         {routePaths.map((path) => (
           <Polyline
@@ -296,6 +452,13 @@ export default function TransitMapView({
             strokeWidth={4}
             lineCap="round"
             lineJoin="round"
+            tappable
+            onPress={(event) => {
+              event.stopPropagation?.();
+              const coordinate = event.nativeEvent.coordinate;
+              if (!coordinate) return;
+              selectNearestStopFromPoint(coordinate.latitude, coordinate.longitude);
+            }}
           />
         ))}
 
@@ -312,7 +475,9 @@ export default function TransitMapView({
             }}
             title={bus.routeName}
             description={`Heading: ${bus.heading}°`}
-            onPress={() => {
+            onPress={(event) => {
+              lastMarkerPressAtRef.current = Date.now();
+              event.stopPropagation?.();
               mapRef.current?.animateToRegion(
                 {
                   latitude: bus.latitude,
@@ -338,7 +503,14 @@ export default function TransitMapView({
               longitude: stop.longitude,
             }}
             title={stop.name}
-            onPress={() => {
+            description={
+              (stopDeparturesById[stop.id] ?? []).length > 0
+                ? `Next departures:\n${(stopDeparturesById[stop.id] ?? []).join('\n')}`
+                : undefined
+            }
+            onPress={(event) => {
+              lastMarkerPressAtRef.current = Date.now();
+              event.stopPropagation?.();
               mapRef.current?.animateToRegion(
                 {
                   latitude: stop.latitude,

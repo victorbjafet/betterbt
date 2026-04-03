@@ -5,7 +5,9 @@
 
 export const API_ENDPOINTS = {
   BT_AJAX_BASE: 'https://ridebt.org/index.php?option=com_ajax&module=bt_map&format=json&Itemid=101',
+  BT_ROUTES_AJAX_BASE: 'https://ridebt.org/index.php?option=com_ajax&module=bt_routes&format=json&Itemid=134',
   BT_WEB_PROXY_BASE: 'https://api.codetabs.com/v1/proxy/?quest=',
+  BT_WEB_POST_PROXY_BASE: 'https://cors.eu.org/',
   BT_CALENDAR: 'https://ridebt.org/index.php?option=com_zcalendar&...',
   BT_WEBSITE: 'https://ridebt.org',
 };

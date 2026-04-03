@@ -7,8 +7,10 @@ import { API_ENDPOINTS, CORS_PROXY } from '@/constants/config';
 import { STATIC_ROUTES } from '@/constants/staticTransitData';
 import { BtAlert, BtArrival, BtDeparture, BtPattern, BtPatternPoint, BtRoute, BtStop, BtVehicle } from '@/types/btApi';
 import { Platform } from 'react-native';
+import { fetchTripsPageEmbeddedJson } from './routeScheduleHtml';
 
 const BASE = API_ENDPOINTS.BT_AJAX_BASE;
+const ROUTES_BASE = API_ENDPOINTS.BT_ROUTES_AJAX_BASE;
 
 interface BtAjaxResponse<T> {
   success: boolean;
@@ -83,6 +85,23 @@ const getUrlForMethodWithParams = (method: string, params?: Record<string, strin
   return url.toString();
 };
 
+const getUrlForMethodWithParamsAtBase = (
+  base: string,
+  method: string,
+  params?: Record<string, string | number>
+) => {
+  const url = new URL(base);
+  url.searchParams.set('method', method);
+
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      url.searchParams.set(key, String(value));
+    });
+  }
+
+  return url.toString();
+};
+
 const withProxyIfConfigured = (url: string): string => {
   if (!CORS_PROXY) return url;
   return `${CORS_PROXY}${url}`;
@@ -145,6 +164,98 @@ const postJsonWithParams = async <T>(method: string, params: Record<string, stri
   }
 
   console.log(`[btApi.${method}] ✓ Got data from proxy`);
+  return payload.data;
+};
+
+const postJsonFormWithParams = async <T>(
+  base: string,
+  method: string,
+  params: Record<string, string | number>
+): Promise<T> => {
+  const targetUrl = getUrlForMethodWithParamsAtBase(base, method);
+
+  if (Platform.OS === 'web') {
+    // Prefer a POST-capable proxy for form-based AJAX methods (e.g., getNextDeparturesForStop).
+    // The legacy GET proxy path often returns empty arrays for these methods.
+    const formBody = new URLSearchParams(
+      Object.entries(params).map(([key, value]) => [key, String(value)])
+    ).toString();
+
+    const postProxyBase = API_ENDPOINTS.BT_WEB_POST_PROXY_BASE;
+    if (postProxyBase) {
+      const postProxyUrl = `${postProxyBase}${targetUrl}`;
+
+      try {
+        const postProxyResponse = await fetch(postProxyUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          },
+          body: formBody,
+        });
+
+        if (postProxyResponse.ok) {
+          const postProxyPayload = (await postProxyResponse.json()) as BtAjaxResponse<T> | BtProxyResponse<T>;
+
+          if ('success' in postProxyPayload) {
+            if (!postProxyPayload.success) {
+              throw new Error(postProxyPayload.message || `RideBT API ${method} returned success=false`);
+            }
+            return postProxyPayload.data;
+          }
+
+          return postProxyPayload.data;
+        }
+      } catch (postProxyError) {
+        console.warn(`RideBT API ${method} web POST proxy failed, trying legacy GET proxy`, postProxyError);
+      }
+    }
+
+    const getUrl = `${API_ENDPOINTS.BT_WEB_PROXY_BASE}${encodeURIComponent(
+      getUrlForMethodWithParamsAtBase(base, method, params)
+    )}`;
+    const webResponse = await fetch(getUrl, { method: 'GET' });
+
+    if (!webResponse.ok) {
+      throw new Error(`RideBT API ${method} failed with HTTP ${webResponse.status}`);
+    }
+
+    const webPayload = (await webResponse.json()) as BtAjaxResponse<T> | BtProxyResponse<T>;
+    if ('success' in webPayload) {
+      if (!webPayload.success) {
+        throw new Error(webPayload.message || `RideBT API ${method} returned success=false`);
+      }
+      return webPayload.data;
+    }
+
+    return webPayload.data;
+  }
+
+  const nativeUrl = withProxyIfConfigured(targetUrl);
+  const formBody = new URLSearchParams(
+    Object.entries(params).map(([key, value]) => [key, String(value)])
+  ).toString();
+
+  const response = await fetch(nativeUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+    },
+    body: formBody,
+  });
+
+  if (!response.ok) {
+    throw new Error(`RideBT API ${method} failed with HTTP ${response.status}`);
+  }
+
+  const payload = (await response.json()) as BtAjaxResponse<T> | BtProxyResponse<T>;
+  if ('success' in payload) {
+    if (!payload.success) {
+      throw new Error(payload.message || `RideBT API ${method} returned success=false`);
+    }
+    return payload.data;
+  }
+
   return payload.data;
 };
 
@@ -243,10 +354,14 @@ export const fetchNextDeparturesForStop = async (
   stopCode: string,
   numOfTrips = 3
 ): Promise<BtDeparture[]> => {
-  return postJsonWithParams<BtDeparture[]>('getNextDeparturesForStop', {
+  return postJsonFormWithParams<BtDeparture[]>(ROUTES_BASE, 'getNextDeparturesForStop', {
     stopCode,
     numOfTrips,
   });
+};
+
+export const fetchRouteTripsPageEmbeddedJson = async (routeShortName: string) => {
+  return fetchTripsPageEmbeddedJson(routeShortName);
 };
 
 /**

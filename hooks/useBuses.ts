@@ -14,9 +14,7 @@ export function useBuses() {
   return useQuery({
     queryKey: ['buses'],
     queryFn: async (): Promise<Bus[]> => {
-      console.log('[useBuses] Fetching vehicles...');
       const data = await fetchVehicles();
-      console.log(`[useBuses] Got ${data.length} vehicles from API`, data.slice(0, 2));
 
       const colorMap = await getBusColors();
       
@@ -42,13 +40,12 @@ export function useBuses() {
         isAtStop: vehicle.isBusAtStop,
       }));
       
-      console.log(`[useBuses] Returning ${buses.length} buses to component`);
       return buses;
     },
     refetchInterval: REFRESH_INTERVALS.VEHICLES,
     refetchIntervalInBackground: false,
     staleTime: STALE_TIMES.VEHICLES,
-    retry: 2,
+    retry: 1,
   });
 }
 
@@ -64,6 +61,8 @@ export function useBusPositions() {
       data: [],
       source: 'loading' as const,
       lastUpdate: null,
+      isLoading: true,
+      isFetching: live.isFetching,
       isError: false,
     };
   }
@@ -78,6 +77,8 @@ export function useBusPositions() {
       data: [],
       source: 'offline' as const,
       lastUpdate: live.dataUpdatedAt || null,
+      isLoading: false,
+      isFetching: live.isFetching,
       isError: true,
     };
   }
@@ -87,6 +88,8 @@ export function useBusPositions() {
       data: live.data || [],
       source: 'offline' as const,
       lastUpdate: live.dataUpdatedAt || null,
+      isLoading: false,
+      isFetching: live.isFetching,
       isError: false,
     };
   }
@@ -95,6 +98,8 @@ export function useBusPositions() {
     data: live.data || [],
     source: 'live' as const,
     lastUpdate: live.dataUpdatedAt || null,
+    isLoading: false,
+    isFetching: live.isFetching,
     isError: false,
   };
 }

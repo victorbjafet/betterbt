@@ -75,5 +75,13 @@ export interface BtPatternPoint {
 
 export interface BtDeparture {
   routeShortName: string;
+  patternName: string;
+  stopName: string;
   adjustedDepartureTime: string;
+}
+
+export interface BtStopDepartureRow {
+  stopCode: string;
+  stopName: string;
+  departures: BtDeparture[];
 }

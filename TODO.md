@@ -1,5 +1,13 @@
 # BetterBT Development Roadmap
 
+## Push Preparation (Apr 2026)
+
+- [x] Update `.gitignore` for local env files and temp artifacts
+- [ ] Review `git status` and keep only intended feature changes in this push
+- [ ] Run lint and type checks before pushing (`npm run lint`)
+- [ ] Verify routes tab flow after live map consolidation
+- [ ] Update `README.md` with current tab/screen behavior changes
+
 ## Phase 1: Foundation (Core Features)
 
 ### 1. Screen & Navigation Implementation
@@ -17,6 +25,7 @@
 - [ ] The screen exists but `fetchArrivals()` currently returns empty
   - [ ] **Discovery**: Find correct BT API endpoint for stop arrivals (via network inspection of ridebt.org)
   - [ ] Once endpoint discovered, update `services/api/btApi.ts` → `fetchArrivals(stopId)`
+  - [ ] Normalize stop identifiers (`stopId` vs `stopCode`) across map stops and arrivals API
   - [ ] Add ETA countdown timer (minutes until arrival, "Now" if ≤0)
   - [ ] Show route color badges with route names
   - [ ] Color-code by source: "Live" (green) vs "Scheduled" (gray)
@@ -47,6 +56,13 @@
   - [ ] Display banner/indicator on home screen: "⚠️ Reduced Service Today" or "🟢 Full Service"
   - **Tech**: Custom calendar scraper or API parser, React Query caching
 
+#### Settings Screen & Store Usage
+- [ ] Add a settings screen and expose user preferences already in `settingsStore`
+  - [ ] Theme mode selector (`light` / `dark` / `auto`)
+  - [ ] Map type selector (`map` / `satellite` / `hybrid`) where supported
+  - [ ] Notifications preference toggle
+  - [ ] Replace remaining local state in feature screens with store-backed state where applicable
+
 ---
 
 ### 3. User Location & Proximity
@@ -72,48 +88,55 @@
 ### 4. Map & Bus Tracking Refinements
 
 #### Reset Button Crash When Bus Selected
-- [ ] Currently breaks if user had a bus focused and clicks reset
-  - [ ] Add null check in reset handler before clearing `focusedBusId`
-  - [ ] Test: select bus → click reset → verify no crash
+- [x] Currently breaks if user had a bus focused and clicks reset
+  - [x] Add null check in reset handler before clearing `focusedBusId`
+  - [x] Test: select bus → click reset → verify no crash
   - **Files**: `app/(tabs)/routes.tsx` `resetToAllBuses()` function
 
 #### Map Zoom on Bus Deselection
-- [ ] Map jumps to random point when user deselects a bus
-  - [ ] Fix auto-fit logic in `MapView.native.tsx` and `MapView.web.tsx`
-  - [ ] When `focusedBus` becomes null, preserve current map region
-  - [ ] Only auto-fit if it's the first load or route was changed
+- [x] Map jumps to random point when user deselects a bus
+  - [x] Fix auto-fit logic in `MapView.native.tsx` and `MapView.web.tsx`
+  - [x] When `focusedBus` becomes null, preserve current map region
+  - [x] Only auto-fit if it's the first load or route was changed
   - **Files**: `components/map/MapView.native.tsx` (line ~170), `MapView.web.tsx` (line ~340)
 
 #### Bus Smoothing Improvements
-- [ ] Current interpolation doesn't account for GPS jitter or traffic
-  - [ ] **Change 1**: Detect when bus lat/lng haven't meaningfully changed → apply slower interpolation
+- [x] Current interpolation doesn't account for GPS jitter or traffic
+  - [x] **Change 1**: Detect when bus lat/lng haven't meaningfully changed → apply slower interpolation
     - Only interpolate if distance > X meters from previous
-  - [ ] **Change 2**: Add "traffic aware" slowdown near intersections/turns
+  - [x] **Change 2**: Add "traffic aware" slowdown near intersections/turns
     - Use route geometry to detect sharp turns, reduce speed 20-50% within turn radius
-  - [ ] **Change 3**: Increase refresh interval: 5s → 10s (reduces jitter, smoother overall motion)
+  - [x] **Change 3**: Tune refresh interval for smoothness (currently 5s)
   - **Files**: `services/map/busPrediction.ts`, `constants/config.ts` (REFRESH_INTERVALS.VEHICLES), `MapView.native.tsx` + `.web.tsx`
   - **Tech**: Haversine distance calc, polyline snap adjustment already exists
 
 #### Bus Heading Arrow Visibility
-- [ ] Currently only shows on routes screen; should show on live map too
-  - [ ] Ensure `BusMarker` rotation applied on health map as well
+- [x] Currently only shows on routes screen; should show on live map too
+  - [x] Consolidated live map into routes; `BusMarker` rotation now applies in the single map experience
   - **Files**: `components/map/BusMarker.tsx`
+
+#### Map Stop Click Selection + Zoom
+- [x] Make clicking a stop visible on route geometry select that stop in the stops list and zoom into it
+  - [x] Wire stop marker click handler to set selected stop state
+  - [x] Scroll/focus matching stop row in stops list UI
+  - [x] Animate map camera to clicked stop with tighter zoom
+  - **Files**: `components/map/MapView.native.tsx`, `components/map/MapView.web.tsx`, `app/(tabs)/routes.tsx`
 
 ---
 
 ### 5. Live Map vs. Routes Tab (Consolidation)
 
 #### Evaluate Live Map Necessity
-- [ ] Routes tab already shows map + bus list + stops + favorites
-- [ ] Live map tab is a subset of features
-  - [ ] **Decision**: Remove live map tab OR keep it as quick-access map-only view?
-  - [ ] If removing: Delete `app/(tabs)/index.tsx`, consolidate to routes screen
-  - [ ] If keeping: Consider making live map collapsible on routes screen instead
+- [x] Routes tab already shows map + bus list + stops + favorites
+- [x] Live map tab is a subset of features
+  - [x] **Decision**: Remove live map tab and consolidate into routes screen
+  - [x] Removed `app/(tabs)/index.tsx` route wiring and tab reference; routes is the canonical live map
+  - [x] Added collapsible full-screen map mode within routes screen
 
 #### Optional: Collapsible Routes/Stops List
-- [ ] Add toggle to hide route list + stops list, show map full-width
-  - [ ] Button to collapse/expand sidebar (like split-view toggle)
-  - [ ] Saves space on mobile, shows more map
+- [x] Add toggle to hide route list + stops list, show map full-width
+  - [x] Button to collapse/expand sidebar (like split-view toggle)
+  - [x] Saves space on mobile, shows more map
   - **Tech**: State toggle + conditional rendering, responsive layout
 
 ---
@@ -214,6 +237,7 @@
 - [ ] `services/fallback/scheduler.ts` is currently stubbed (returns `[]`)
   - [ ] **Prerequisite 1**: Obtain static timetable JSON for all routes (parse route PDFs → JSON)
   - [ ] **Prerequisite 2**: Host JSON on GitHub or embed in app
+  - [ ] Figure out caching routes in the page and/or hardcoding them to prepare for fallback and reduce repeated route fetching
   - [ ] Implement: given current time + route ID + service level → find active trip
   - [ ] Calculate elapsed time on route → interpolate bus position along path
   - [ ] Account for: service day schedule, trip start time, stop dwell times
@@ -287,6 +311,33 @@
 
 ---
 
+## Phase 3.5: iOS Widgets
+
+### 11. iPhone Widgets
+
+#### Home Screen Widgets (Small/Medium/Large)
+- [ ] Add iPhone Home Screen widgets for quick transit glance
+  - [ ] Small widget: show one favorite route with next arrival
+  - [ ] Medium widget: show top 2-3 upcoming arrivals across favorites
+  - [ ] Large widget: show arrivals + active alert summary
+  - [ ] Add tap targets/deep links into specific route/stop screens (`route/[id]`, `stop/[id]`)
+  - **Tech**: Expo widget support (or native WidgetKit integration), shared data store/app group, periodic timeline refresh
+
+#### Widget Data Pipeline
+- [ ] Provide widget-safe cached data snapshot from app state/API responses
+  - [ ] Persist latest arrivals for favorite routes/stops
+  - [ ] Include timestamp + staleness indicator in widget UI
+  - [ ] Fallback gracefully when network is unavailable
+  - **Tech**: Shared storage bridge, lightweight serialization, background refresh constraints
+
+#### Widget Configuration & UX
+- [ ] Allow users to configure widget content (favorite route/stop)
+  - [ ] Add in-app widget setup helper from settings screen
+  - [ ] Support lock screen-safe text truncation and accessibility labels
+  - [ ] Validate dark/light appearance and dynamic type sizing
+
+---
+
 ## Testing & Deployment
 
 ### 11. Platform Testing
@@ -323,6 +374,14 @@
 
 ### 12. Code Quality
 
+#### Dead Code & Structure Cleanup
+- [ ] Remove or integrate currently unused files/components
+  - [ ] `components/map/RoutePolyline.tsx` (unused placeholder)
+  - [ ] `components/ui/AlertBanner.tsx` (implemented but not rendered)
+  - [ ] `store/busStore.ts` and `store/routeStore.ts` (unused alongside React Query)
+  - [ ] `app/(tabs)/explore.tsx` (template screen not in tab layout)
+- [ ] Keep roadmap/docs aligned with implementation status (`README.md`, `API_DOCUMENTATION.md`, `TODO.md`)
+
 #### Error Boundaries & Fallback UI
 - [ ] Add React error boundary for map crashes
 - [ ] Add retry buttons on API errors
@@ -349,16 +408,16 @@
 |----------|------|----------|-------------|---------------|
 | **Phase 1 - Critical** | Route detail screen | No | Medium | Navigation wiring |
 | **Phase 1 - Critical** | Stop arrivals endpoint | Yes | Low | API discovery |
+| **Phase 1 - Critical** | Stop ID/code normalization | Yes | Small | Arrivals + stops endpoint behavior |
 | **Phase 1 - Critical** | Service level UI | No | Low | Calendar API discovery |
 | **Phase 1 - Critical** | Favorites persistence | No | Low | Zustand + SecureStore |
-| **Phase 1 - Polish** | Reset button crash | Yes | Small | Bug fix |
-| **Phase 1 - Polish** | Map zoom jump | Yes | Small | Bug fix |
-| **Phase 1 - Polish** | Bus smoothing | No | Medium | Traffic logic |
+| **Phase 1 - Critical** | Settings screen + store usage | No | Medium | settingsStore actions |
 | **Phase 2 - Core** | Offline fallback | No | Large | Static timetable JSON |
 | **Phase 2 - Data** | Filter system | No | Medium | UI + state |
 | **Phase 2 - Data** | View location on map | No | Small | Marker UI |
+| **Tech Debt** | Dead code cleanup | No | Small | Usage audit |
 | **Phase 3** | Trip planning | No | Large | Graph + routing |
 
 ---
 
-**Last Updated**: March 31, 2026
+**Last Updated**: April 3, 2026

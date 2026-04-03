@@ -9,8 +9,13 @@ const EARTH_RADIUS_METERS = 6_371_000;
 const METERS_PER_DEGREE_LAT = 111_320;
 const SNAP_DISTANCE_METERS = 120;
 const STOP_SLOWDOWN_RADIUS_METERS = 15.24; // 50 feet
+const TURN_SLOWDOWN_RADIUS_METERS = 65;
+const TURN_ANGLE_START_DEGREES = 20;
+const TURN_ANGLE_MAX_EFFECT_DEGREES = 95;
+const MAX_TURN_SLOWDOWN_RATIO = 0.5; // Up to 50% speed reduction near sharp turns
 
 const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
+const toDegrees = (radians: number) => (radians * 180) / Math.PI;
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
@@ -18,6 +23,24 @@ const normalizeHeading = (heading: number) => {
   if (!Number.isFinite(heading)) return 0;
   const normalized = heading % 360;
   return normalized < 0 ? normalized + 360 : normalized;
+};
+
+const headingDeltaDegrees = (a: number, b: number) => {
+  const delta = Math.abs(normalizeHeading(a) - normalizeHeading(b)) % 360;
+  return delta > 180 ? 360 - delta : delta;
+};
+
+const bearingDegrees = (from: Coordinate, to: Coordinate) => {
+  const lat1 = toRadians(from.latitude);
+  const lat2 = toRadians(to.latitude);
+  const dLng = toRadians(to.longitude - from.longitude);
+
+  const y = Math.sin(dLng) * Math.cos(lat2);
+  const x =
+    Math.cos(lat1) * Math.sin(lat2) -
+    Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+
+  return normalizeHeading(toDegrees(Math.atan2(y, x)));
 };
 
 const projectByHeading = (
@@ -119,6 +142,43 @@ const findNearestPathPoint = (
   return best;
 };
 
+const getTurnSlowdownFactor = (point: Coordinate, routePaths: RouteGeometryPath[]) => {
+  let minFactor = 1;
+
+  routePaths.forEach((path) => {
+    const coordinates = path.coordinates;
+    if (coordinates.length < 3) return;
+
+    for (let index = 1; index < coordinates.length - 1; index += 1) {
+      const previous = coordinates[index - 1];
+      const pivot = coordinates[index];
+      const next = coordinates[index + 1];
+
+      const proximityMeters = distanceMeters(point, pivot);
+      if (proximityMeters > TURN_SLOWDOWN_RADIUS_METERS) continue;
+
+      const incomingBearing = bearingDegrees(previous, pivot);
+      const outgoingBearing = bearingDegrees(pivot, next);
+      const turnAngle = headingDeltaDegrees(incomingBearing, outgoingBearing);
+      if (turnAngle < TURN_ANGLE_START_DEGREES) continue;
+
+      const angleStrength = clamp(
+        (turnAngle - TURN_ANGLE_START_DEGREES) /
+          (TURN_ANGLE_MAX_EFFECT_DEGREES - TURN_ANGLE_START_DEGREES),
+        0,
+        1
+      );
+      const proximityStrength = 1 - clamp(proximityMeters / TURN_SLOWDOWN_RADIUS_METERS, 0, 1);
+      const slowdownStrength = angleStrength * proximityStrength;
+
+      const localFactor = 1 - MAX_TURN_SLOWDOWN_RATIO * slowdownStrength;
+      minFactor = Math.min(minFactor, localFactor);
+    }
+  });
+
+  return minFactor;
+};
+
 export const blendCoordinates = (from: Coordinate, to: Coordinate, factor: number): Coordinate => {
   const t = clamp(factor, 0, 1);
   return {
@@ -152,7 +212,17 @@ export const predictBusCoordinate = (
       ? 0.25 + 0.75 * clamp(nearestStopDistance / STOP_SLOWDOWN_RADIUS_METERS, 0, 1)
       : 1;
 
-  const speedMetersPerSecond = Math.max(bus.speed, 0) * 0.44704 * slowdownFactor;
+  const turnSlowdownFactor = routePaths.length > 0
+    ? getTurnSlowdownFactor(
+      {
+        latitude: bus.latitude,
+        longitude: bus.longitude,
+      },
+      routePaths
+    )
+    : 1;
+
+  const speedMetersPerSecond = Math.max(bus.speed, 0) * 0.44704 * slowdownFactor * turnSlowdownFactor;
   const distance = speedMetersPerSecond * horizonSeconds;
 
   let projected = projectByHeading(

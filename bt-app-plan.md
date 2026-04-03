@@ -81,8 +81,7 @@ hokie-transit/
 ├── app/                          # Expo Router: all screens (file = route)
 │   ├── (tabs)/
 │   │   ├── _layout.tsx           # Tab bar definition
-│   │   ├── index.tsx             # 🗺️  Live Map (default tab)
-│   │   ├── routes.tsx            # 📋 All Routes list
+│   │   ├── routes.tsx            # 🗺️  Live map + routes + stops (primary transit screen)
 │   │   └── alerts.tsx            # 🚨 Service alerts
 │   ├── route/
 │   │   └── [id].tsx              # Route detail: stops, live ETAs, path on map
@@ -215,7 +214,7 @@ This means Phase 2's prediction engine plugs in without touching any UI code.
 - [ ] Project scaffolding: Expo + TypeScript + NativeWind + Expo Router
 - [ ] Identify PassioGO system ID via network inspection
 - [ ] `passioGO.ts` service with all API calls typed
-- [ ] Live map tab: buses on map with route colors, auto-refreshing
+- [ ] Routes tab live map: buses on map with route colors, auto-refreshing
 - [ ] Bus markers: icon rotates to match heading, animates on position update
 - [ ] Routes list tab: all routes, color-coded, active/inactive status
 - [ ] Route detail screen: stop list, live buses on route, ETA countdown

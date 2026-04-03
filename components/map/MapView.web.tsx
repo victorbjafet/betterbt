@@ -5,7 +5,7 @@
  */
 
 import { MAP_CONFIG, REFRESH_INTERVALS } from '@/constants/config';
-import { distanceMeters, interpolateCoordinate, predictBusCoordinate } from '@/services/map/busPrediction';
+import { blendCoordinates, distanceMeters, interpolateCoordinate, predictBusCoordinate } from '@/services/map/busPrediction';
 import { Bus, RouteGeometryPath, Stop } from '@/types/transit';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -13,7 +13,7 @@ type LeafletModules = {
   MapContainer: React.ComponentType<any>;
   TileLayer: React.ComponentType<any>;
   Marker: React.ComponentType<any>;
-  Popup: React.ComponentType<any>;
+  Tooltip: React.ComponentType<any>;
   CircleMarker: React.ComponentType<any>;
   Polyline: React.ComponentType<any>;
   useMap: () => any;
@@ -23,8 +23,13 @@ type LeafletModules = {
 interface MapViewProps {
   buses: Bus[];
   stops?: Stop[];
+  stopDeparturesById?: Record<string, string[]>;
   routePaths?: RouteGeometryPath[];
+  predictionRoutePaths?: RouteGeometryPath[];
   selectedRouteId?: string;
+  resetViewToken?: number;
+  fullscreenViewToken?: number;
+  layoutVersion?: number;
   focusedBus?: Bus | null;
   focusedStop?: Stop | null;
   onBusPress?: (bus: Bus) => void;
@@ -35,8 +40,13 @@ interface MapViewProps {
 export default function TransitMapView({
   buses,
   stops = [],
+  stopDeparturesById = {},
   routePaths = [],
+  predictionRoutePaths,
   selectedRouteId,
+  resetViewToken = 0,
+  fullscreenViewToken = 0,
+  layoutVersion = 0,
   focusedBus,
   focusedStop,
   onBusPress,
@@ -44,6 +54,10 @@ export default function TransitMapView({
   onMapPress,
 }: MapViewProps) {
   const SNAP_TO_REAL_POSITION_METERS = 28;
+  const LOW_MOVEMENT_THRESHOLD_METERS = 8;
+  const LOW_MOVEMENT_END_BLEND_FACTOR = 0.45;
+  const LOW_MOVEMENT_DURATION_MULTIPLIER = 1.6;
+  const STOP_SELECTION_RADIUS_METERS = 28;
 
   const [leaflet, setLeaflet] = useState<LeafletModules | null>(null);
   const motionTrackRef = useRef<Record<string, {
@@ -59,6 +73,10 @@ export default function TransitMapView({
   const didAutoFitAllBuses = useRef(false);
   const lastHandledBusFocusKey = useRef<string | null>(null);
   const lastHandledStopFocusKey = useRef<string | null>(null);
+  const lastHandledResetToken = useRef(-1);
+  const lastHandledViewportToken = useRef('');
+  const lastFocusedBusId = useRef<string | null>(null);
+  const lastMarkerInteractionAtRef = useRef(0);
 
   useEffect(() => {
     const now = Date.now();
@@ -78,7 +96,8 @@ export default function TransitMapView({
 
       const seeded = buses.map((bus) => {
         const realPosition = { latitude: bus.latitude, longitude: bus.longitude };
-        const predictedEnd = predictBusCoordinate(bus, now, routePaths, {
+        const predictionPaths = (predictionRoutePaths ?? routePaths).filter((path) => path.routeId === bus.routeId);
+        const predictedEnd = predictBusCoordinate(bus, now, predictionPaths, {
           stops,
           horizonSeconds: REFRESH_INTERVALS.VEHICLES / 1000,
         });
@@ -92,13 +111,22 @@ export default function TransitMapView({
           ? realPosition
           : (previousById.get(bus.id) ?? realPosition);
 
+        const movementMeters = distanceMeters(start, realPosition);
+        const hasLowMovement = movementMeters > 0 && movementMeters <= LOW_MOVEMENT_THRESHOLD_METERS;
+        const end = hasLowMovement
+          ? blendCoordinates(start, predictedEnd, LOW_MOVEMENT_END_BLEND_FACTOR)
+          : predictedEnd;
+        const durationMs = hasLowMovement
+          ? Math.round(REFRESH_INTERVALS.VEHICLES * LOW_MOVEMENT_DURATION_MULTIPLIER)
+          : REFRESH_INTERVALS.VEHICLES;
+
         nextTrackById[bus.id] = {
           start,
-          end: predictedEnd,
+          end,
           startedAtMs: now,
-          durationMs: REFRESH_INTERVALS.VEHICLES,
+          durationMs,
         };
-        nextPredictedEndpoints[bus.id] = predictedEnd;
+        nextPredictedEndpoints[bus.id] = end;
 
         return {
           ...bus,
@@ -112,7 +140,7 @@ export default function TransitMapView({
 
       return seeded;
     });
-  }, [buses, routePaths, stops]);
+  }, [buses, predictionRoutePaths, routePaths, stops]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -144,6 +172,18 @@ export default function TransitMapView({
       lastHandledBusFocusKey.current = null;
     }
   }, [selectedRouteId]);
+
+  useEffect(() => {
+    const currentFocusedBusId = focusedBus?.id ?? null;
+
+    // If user clears a previously focused bus, drop marker-click fallback so viewport stays put.
+    if (lastFocusedBusId.current && !currentFocusedBusId) {
+      setClickedBus(null);
+      lastHandledBusFocusKey.current = null;
+    }
+
+    lastFocusedBusId.current = currentFocusedBusId;
+  }, [focusedBus]);
 
   useEffect(() => {
     const styleId = 'betterbt-leaflet-runtime-css';
@@ -244,6 +284,72 @@ export default function TransitMapView({
       .betterbt-popup-value {
         color: #f9fafb;
       }
+      .betterbt-selected-bus-tooltip {
+        background: rgba(9, 14, 27, 0.94);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+        padding: 0;
+      }
+      .betterbt-selected-bus-tooltip::before {
+        border-top-color: rgba(9, 14, 27, 0.94);
+      }
+      .betterbt-selected-bus-tooltip .betterbt-popup {
+        min-width: 132px;
+        padding: 6px 7px;
+        font: 500 8px/1.28 ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+      .betterbt-selected-bus-tooltip .betterbt-popup-route {
+        gap: 5px;
+        margin-bottom: 5px;
+      }
+      .betterbt-selected-bus-tooltip .betterbt-popup-chip {
+        min-width: 17px;
+        height: 17px;
+        padding: 0 5px;
+        border-width: 1px;
+        font-size: 7px;
+      }
+      .betterbt-selected-bus-tooltip .betterbt-popup-grid {
+        row-gap: 2px;
+        column-gap: 5px;
+      }
+      .betterbt-selected-stop-tooltip {
+        background: rgba(9, 14, 27, 0.94);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+        padding: 0;
+      }
+      .betterbt-selected-stop-tooltip::before {
+        border-top-color: rgba(9, 14, 27, 0.94);
+      }
+      .betterbt-stop-focus-card {
+        min-width: 156px;
+        padding: 8px 10px;
+        color: #f3f4f6;
+        font: 600 11px/1.3 ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+      .betterbt-stop-focus-title {
+        margin-bottom: 7px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .betterbt-stop-focus-id {
+        margin-bottom: 7px;
+        color: #cbd5e1;
+        font: 500 10px/1.2 ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+      .betterbt-stop-focus-button {
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        background: rgba(255, 255, 255, 0.08);
+        color: #f9fafb;
+        border-radius: 999px;
+        padding: 4px 9px;
+        font: 600 10px/1.1 ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        cursor: default;
+      }
     `;
 
     document.head.appendChild(styleEl);
@@ -264,7 +370,7 @@ export default function TransitMapView({
         MapContainer: reactLeaflet.MapContainer,
         TileLayer: reactLeaflet.TileLayer,
         Marker: reactLeaflet.Marker,
-        Popup: reactLeaflet.Popup,
+        Tooltip: reactLeaflet.Tooltip,
         CircleMarker: reactLeaflet.CircleMarker,
         Polyline: reactLeaflet.Polyline,
         useMap: reactLeaflet.useMap,
@@ -286,6 +392,30 @@ export default function TransitMapView({
   const filteredStops = !selectedRouteId
     ? stops
     : stops.filter((stop) => stop.routes.includes(selectedRouteId));
+
+  const selectNearestStopFromPoint = (latitude: number, longitude: number) => {
+    if (filteredStops.length === 0) return false;
+
+    const tappedPoint = { latitude, longitude };
+    let nearestStop: Stop | null = null;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    for (const stop of filteredStops) {
+      const stopPoint = { latitude: stop.latitude, longitude: stop.longitude };
+      const meters = distanceMeters(tappedPoint, stopPoint);
+      if (meters < nearestDistance) {
+        nearestDistance = meters;
+        nearestStop = stop;
+      }
+    }
+
+    // Keep generous geometry snapping but avoid selecting distant nearby stops.
+    if (!nearestStop || nearestDistance > STOP_SELECTION_RADIUS_METERS) return false;
+
+    lastMarkerInteractionAtRef.current = Date.now();
+    onStopPress?.(nearestStop);
+    return true;
+  };
 
   const center: [number, number] =
     filteredBuses.length > 0
@@ -385,7 +515,7 @@ export default function TransitMapView({
     return <div style={styles.loadingState}>Loading map...</div>;
   }
 
-  const { MapContainer, TileLayer, Marker, Popup, CircleMarker, Polyline } = leaflet;
+  const { MapContainer, TileLayer, Marker, Tooltip, CircleMarker, Polyline } = leaflet;
 
   const FocusRouteBuses: React.FC<{ busesOnRoute: Bus[]; routeGeometry: RouteGeometryPath[]; activeRouteId?: string }> = ({
     busesOnRoute,
@@ -548,25 +678,207 @@ export default function TransitMapView({
 
     useEffect(() => {
       const onClick = (event: any) => {
+        if (Date.now() - lastMarkerInteractionAtRef.current < 300) {
+          return;
+        }
+
         const clickTarget = event?.originalEvent?.target as HTMLElement | null;
         if (clickTarget?.closest('.leaflet-marker-icon, .leaflet-popup, .leaflet-interactive')) {
           return;
         }
-        onMapPress?.();
-      };
-      const onManualMoveStart = () => {
+
+        const latlng = event?.latlng;
+        if (selectedRouteId && latlng && selectNearestStopFromPoint(latlng.lat, latlng.lng)) {
+          return;
+        }
+
+        setClickedBus(null);
+        lastHandledBusFocusKey.current = null;
         onMapPress?.();
       };
 
       map.on('click', onClick);
-      map.on('dragstart', onManualMoveStart);
-      map.on('zoomstart', onManualMoveStart);
       return () => {
         map.off('click', onClick);
-        map.off('dragstart', onManualMoveStart);
-        map.off('zoomstart', onManualMoveStart);
       };
     }, [map]);
+
+    return null;
+  };
+
+  const HandleMapResize: React.FC = () => {
+    const map = leaflet.useMap();
+
+    useEffect(() => {
+      const container = map.getContainer();
+
+      const invalidate = () => {
+        map.invalidateSize({ pan: false });
+      };
+
+      // Run immediately and after paint to catch expand/collapse layout transitions.
+      invalidate();
+      const animationFrameId = requestAnimationFrame(invalidate);
+      const timeoutId = window.setTimeout(invalidate, 120);
+
+      const observer = new ResizeObserver(() => {
+        invalidate();
+      });
+
+      observer.observe(container);
+      window.addEventListener('resize', invalidate);
+
+      return () => {
+        cancelAnimationFrame(animationFrameId);
+        window.clearTimeout(timeoutId);
+        observer.disconnect();
+        window.removeEventListener('resize', invalidate);
+      };
+    }, [map]);
+
+    return null;
+  };
+
+  const ResetViewport: React.FC<{ token: number; allBuses: Bus[] }> = ({ token, allBuses }) => {
+    const map = leaflet.useMap();
+
+    useEffect(() => {
+      if (token <= 0) return;
+      if (lastHandledResetToken.current === token) return;
+
+      map.stop();
+
+      if (allBuses.length > 0) {
+        const latitudes = allBuses.map((bus) => bus.latitude);
+        const longitudes = allBuses.map((bus) => bus.longitude);
+
+        if (allBuses.length === 1) {
+          map.flyTo([allBuses[0].latitude, allBuses[0].longitude], Math.max(map.getZoom(), 16), {
+            animate: true,
+            duration: 0.55,
+          });
+        } else {
+          map.fitBounds(
+            [
+              [Math.min(...latitudes), Math.min(...longitudes)],
+              [Math.max(...latitudes), Math.max(...longitudes)],
+            ],
+            {
+              padding: [56, 56],
+              animate: true,
+              duration: 0.65,
+              maxZoom: 16,
+            }
+          );
+        }
+      } else {
+        map.flyTo([MAP_CONFIG.INITIAL_LATITUDE, MAP_CONFIG.INITIAL_LONGITUDE], MAP_CONFIG.INITIAL_ZOOM, {
+          animate: true,
+          duration: 0.6,
+        });
+      }
+
+      setClickedBus(null);
+      lastAutoFocusedRouteKey.current = null;
+      didAutoFitAllBuses.current = false;
+      lastHandledBusFocusKey.current = null;
+      lastHandledStopFocusKey.current = null;
+      lastHandledResetToken.current = token;
+    }, [allBuses, map, token]);
+
+    return null;
+  };
+
+  const RecenterOnViewportChange: React.FC<{
+    fullscreenToken: number;
+    layoutToken: number;
+    allBuses: Bus[];
+    activeRouteId?: string;
+    routeGeometry: RouteGeometryPath[];
+    focusedBus: Bus | null;
+  }> = ({ fullscreenToken, layoutToken, allBuses, activeRouteId, routeGeometry, focusedBus }) => {
+    const map = leaflet.useMap();
+
+    useEffect(() => {
+      if (fullscreenToken <= 0 && layoutToken <= 0) return;
+
+      const viewportToken = `${fullscreenToken}:${layoutToken}`;
+      if (lastHandledViewportToken.current === viewportToken) return;
+
+      map.stop();
+      map.invalidateSize({ pan: false });
+
+      if (focusedBus) {
+        map.flyTo([focusedBus.latitude, focusedBus.longitude], Math.max(map.getZoom(), 17), {
+          animate: true,
+          duration: 0.55,
+        });
+      } else if (activeRouteId) {
+        const routeCoordinates = routeGeometry.flatMap((path) => path.coordinates);
+
+        if (routeCoordinates.length > 0) {
+          const latitudes = routeCoordinates.map((point) => point.latitude);
+          const longitudes = routeCoordinates.map((point) => point.longitude);
+          map.fitBounds(
+            [
+              [Math.min(...latitudes), Math.min(...longitudes)],
+              [Math.max(...latitudes), Math.max(...longitudes)],
+            ],
+            {
+              padding: [48, 48],
+              animate: true,
+              duration: 0.6,
+              maxZoom: 16,
+            }
+          );
+        } else if (allBuses.length > 0) {
+          const latitudes = allBuses.map((bus) => bus.latitude);
+          const longitudes = allBuses.map((bus) => bus.longitude);
+          map.fitBounds(
+            [
+              [Math.min(...latitudes), Math.min(...longitudes)],
+              [Math.max(...latitudes), Math.max(...longitudes)],
+            ],
+            {
+              padding: [48, 48],
+              animate: true,
+              duration: 0.6,
+              maxZoom: 16,
+            }
+          );
+        }
+      } else if (allBuses.length > 0) {
+        const latitudes = allBuses.map((bus) => bus.latitude);
+        const longitudes = allBuses.map((bus) => bus.longitude);
+
+        if (allBuses.length === 1) {
+          map.flyTo([allBuses[0].latitude, allBuses[0].longitude], Math.max(map.getZoom(), 16), {
+            animate: true,
+            duration: 0.55,
+          });
+        } else {
+          map.fitBounds(
+            [
+              [Math.min(...latitudes), Math.min(...longitudes)],
+              [Math.max(...latitudes), Math.max(...longitudes)],
+            ],
+            {
+              padding: [56, 56],
+              animate: true,
+              duration: 0.65,
+              maxZoom: 16,
+            }
+          );
+        }
+      } else {
+        map.flyTo([MAP_CONFIG.INITIAL_LATITUDE, MAP_CONFIG.INITIAL_LONGITUDE], MAP_CONFIG.INITIAL_ZOOM, {
+          animate: true,
+          duration: 0.6,
+        });
+      }
+
+      lastHandledViewportToken.current = viewportToken;
+    }, [activeRouteId, allBuses, focusedBus, fullscreenToken, layoutToken, map, routeGeometry]);
 
     return null;
   };
@@ -583,6 +895,16 @@ export default function TransitMapView({
         <FocusRouteBuses busesOnRoute={filteredBuses} routeGeometry={routePaths} activeRouteId={selectedRouteId} />
         <FlyToBus target={focusedBusTarget} />
         <FlyToStop target={focusedStop} />
+        <ResetViewport token={resetViewToken} allBuses={filteredBuses} />
+        <RecenterOnViewportChange
+          fullscreenToken={fullscreenViewToken}
+          layoutToken={layoutVersion}
+          allBuses={filteredBuses}
+          activeRouteId={selectedRouteId}
+          routeGeometry={routePaths}
+          focusedBus={selectedBusLive}
+        />
+        <HandleMapResize />
         <HandleMapBackgroundClick />
 
         <TileLayer
@@ -595,6 +917,14 @@ export default function TransitMapView({
             key={path.id}
             positions={path.coordinates.map((point) => [point.latitude, point.longitude])}
             pathOptions={{ color: path.color, weight: 4, opacity: 0.78 }}
+            eventHandlers={{
+              click: (event) => {
+                event.originalEvent?.stopPropagation?.();
+                const latlng = event.latlng;
+                if (!latlng) return;
+                selectNearestStopFromPoint(latlng.lat, latlng.lng);
+              },
+            }}
           />
         ))}
 
@@ -602,15 +932,76 @@ export default function TransitMapView({
           <CircleMarker
             key={stop.id}
             center={[stop.latitude, stop.longitude]}
-            radius={5}
-            pathOptions={{ color: '#ffffff', weight: 1, fillColor: '#0f766e', fillOpacity: 1 }}
+            radius={8}
+            pathOptions={{
+              color: '#ffffff',
+              weight: 2,
+              fillColor: '#0f766e',
+              fillOpacity: 1,
+              bubblingMouseEvents: false,
+            }}
             eventHandlers={{
-              click: () => {
+              click: (event) => {
+                event.originalEvent?.stopPropagation?.();
+                lastMarkerInteractionAtRef.current = Date.now();
                 onStopPress?.(stop);
+              },
+              mousedown: (event) => {
+                event.originalEvent?.stopPropagation?.();
+                lastMarkerInteractionAtRef.current = Date.now();
+              },
+              touchstart: (event) => {
+                event.originalEvent?.stopPropagation?.();
+                lastMarkerInteractionAtRef.current = Date.now();
               },
             }}
           >
-            <Popup>{stop.name}</Popup>
+            {focusedStop?.id === stop.id ? (
+              <Tooltip
+                permanent
+                interactive
+                direction="top"
+                offset={[0, -16]}
+                className="betterbt-selected-stop-tooltip"
+              >
+                <div className="betterbt-stop-focus-card">
+                  <div className="betterbt-stop-focus-title" title={stop.name}>{stop.name}</div>
+                  <div className="betterbt-stop-focus-id">Stop #{stop.id}</div>
+                  {(stopDeparturesById[stop.id] ?? []).filter((time) => time && time !== '--').length > 0 ? (
+                    <div style={{ marginBottom: 7 }}>
+                      <div className="betterbt-popup-label" style={{ marginBottom: 2 }}>
+                        {selectedRouteId ? `Next ${selectedRouteId} departures` : 'Next departures'}
+                      </div>
+                      <ul style={{ margin: '0 0 0 14px', padding: 0 }}>
+                        {(stopDeparturesById[stop.id] ?? [])
+                          .filter((time) => time && time !== '--')
+                          .slice(0, 3)
+                          .map((time) => (
+                          <li key={`${stop.id}-focus-${time}`} className="betterbt-popup-value">{time}</li>
+                          ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <div style={{ marginBottom: 7 }}>
+                      <div className="betterbt-popup-label" style={{ marginBottom: 2 }}>
+                        {selectedRouteId ? `Next ${selectedRouteId} departures` : 'Next departures'}
+                      </div>
+                      <div className="betterbt-popup-value">none</div>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    className="betterbt-stop-focus-button"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                    }}
+                  >
+                    See stop info
+                  </button>
+                </div>
+              </Tooltip>
+            ) : null}
           </CircleMarker>
         ))}
 
@@ -620,7 +1011,9 @@ export default function TransitMapView({
             position={[bus.latitude, bus.longitude]}
             icon={busIcons[bus.id]}
             eventHandlers={{
-              click: () => {
+              click: (event) => {
+                event.originalEvent?.stopPropagation?.();
+                lastMarkerInteractionAtRef.current = Date.now();
                 setClickedBus({
                   key: `marker-${bus.id}-${Date.now()}`,
                   latitude: bus.latitude,
@@ -630,21 +1023,19 @@ export default function TransitMapView({
               },
             }}
           >
-            <Popup>{renderBusPopupContent(bus)}</Popup>
+            {selectedBusLive?.id === bus.id ? (
+              <Tooltip
+                permanent
+                interactive
+                direction="top"
+                offset={[0, -22]}
+                className="betterbt-selected-bus-tooltip"
+              >
+                {renderBusPopupContent(bus)}
+              </Tooltip>
+            ) : null}
           </Marker>
         ))}
-
-        {selectedBusLive ? (
-          <Popup
-            key={`selected-${selectedBusLive.id}`}
-            position={[selectedBusLive.latitude, selectedBusLive.longitude]}
-            autoClose={false}
-            closeOnClick={false}
-            closeButton={false}
-          >
-            {renderBusPopupContent(selectedBusLive)}
-          </Popup>
-        ) : null}
       </MapContainer>
     </div>
   );

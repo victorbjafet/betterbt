@@ -1,10 +1,14 @@
 # BetterBT API Documentation
 
-Last updated: 2026-03-31
+Last updated: 2026-04-02
 
 ## Overview
 
 The app integrates with the RideBT Joomla AJAX API using a single base endpoint plus a method query parameter.
+
+Related discovery:
+- The routes-schedules page also exposes a separate bt_routes AJAX module for stop departure timing.
+- Some route schedule detail is embedded directly in the HTML for the trips view, rather than exposed as a standalone JSON endpoint.
 
 Base endpoint:
 - https://ridebt.org/index.php?option=com_ajax&module=bt_map&format=json&Itemid=101
@@ -15,8 +19,9 @@ Method pattern:
 
 Transport behavior in this app:
 - Native (iOS/Android): POST request to the method URL
-- Web: GET request through proxy
+- Web: GET request through proxy for standard bt_map methods
 - Web proxy base: https://api.codetabs.com/v1/proxy/?quest=
+- Web POST proxy (for form POST methods like getNextDeparturesForStop): https://cors.eu.org/
 
 Source of truth in repo:
 - services/api/btApi.ts
@@ -48,7 +53,10 @@ Used by current app runtime:
 - getActiveAlerts
 
 Implemented in API service but not currently called by hooks/screens:
-- getNextDeparturesForStop
+- None
+
+Implemented in API service and currently called by hooks/screens:
+- getNextDeparturesForStop (fallback path in route stop timetable hook)
 
 Known and confirmed from probe artifacts, but not currently used at runtime:
 - getRoutes
@@ -223,27 +231,37 @@ Example probe file:
 
 URL:
 - <BASE>&method=getNextDeparturesForStop&stopCode=<stopCode>&numOfTrips=<numOfTrips>
+- The routes-schedules page uses a related live endpoint at:
+  - https://ridebt.org/index.php?option=com_ajax&module=bt_routes&method=getNextDeparturesForStop&format=json&Itemid=134
 
 Params:
 - stopCode: string (required)
 - numOfTrips: number (optional in concept, app defaults to 3)
 
 Used by app:
-- Not currently called by hooks/screens, but implemented in API service
+- Yes, as fallback path in route stop timetable flow
 
 Raw data return type:
 - data: Array<Departure>
 
 Fields:
 - routeShortName: string
+- patternName: string
+- stopName: string
 - adjustedDepartureTime: string (datetime)
 
 App-level return (BtDeparture):
 - routeShortName: string
+- patternName: string
+- stopName: string
 - adjustedDepartureTime: string
 
 Probe notes:
-- Multiple probe captures currently returned empty arrays for tested stops
+- GET requests to the com_ajax endpoint returned empty arrays in testing.
+- POST requests with form data returned populated next-departure JSON.
+- This response is narrower than the trips page's embedded schedule JSON.
+- This endpoint does not include tripId or stop rank, so it cannot by itself fully align
+  repeated-stop loops across concurrent buses.
 
 Example probe files:
 - testing/api_probe/getNextDeparturesForStop.json
@@ -281,6 +299,51 @@ Important fields in each route record:
 Example probe file:
 - testing/api_probe/getRoutes.json
 
+## Trips Page Embedded Schedule Data (routes-schedules?route=<route>&routeView=trips)
+
+Status:
+- Confirmed source of richer stop schedule data used by route stop timetable logic.
+- Parsed from embedded JS objects in the HTML, not from a dedicated standalone JSON endpoint.
+
+Relevant page URL pattern:
+- https://ridebt.org/index.php/routes-schedules?route=<routeShortName>&routeView=trips
+
+Confirmed embedded variables:
+- BUSES
+- PATTERNS
+- ROUTE
+- ROUTES
+- ROUTE_SCHEDULES
+- ROUTE_SCHEDULES_BY_STOP
+- STOPS
+
+Most important object for stop times:
+- ROUTE_SCHEDULES_BY_STOP
+- Shape: object keyed by stopCode -> array of entries
+
+Confirmed fields per schedule entry:
+- blockId: string
+- tripId: string
+- startTime: string
+- patternName: string
+- stopName: string
+- stopCode: string
+- rank: string (sortable order along pattern)
+- isTimePoint: string
+- calculatedArrivalTime: string (ISO datetime)
+- calculatedDepartureTime: string (ISO datetime)
+- stopNotes: string | null
+- routeNotes: string | null
+
+New implementation notes:
+- Route stop timetable now primarily uses this embedded schedule structure.
+- Rows are grouped by tripId and ordered by an anchor stop time to keep cycle columns
+  chronological when multiple buses run the same route.
+- Duplicate stop visits on loop routes are disambiguated using rank selection along the
+  selected stop traversal order.
+- If embedded schedule extraction fails or returns empty, the app falls back to
+  getNextDeparturesForStop.
+
 ## Known Invalid/Unavailable Methods (Probe)
 
 The probe file testing/api_probe/extra_method_probe.txt shows many guessed methods returning:
@@ -312,8 +375,9 @@ The following app functions are placeholders and currently do not hit a backend 
 | getRoutePatterns | none | Yes | Array of route/pattern name pairs |
 | getPatternPoints | patternName (required) | Yes | Array of pattern points/stops |
 | getActiveAlerts | none | Yes | Array of active alert records |
-| getNextDeparturesForStop | stopCode (required), numOfTrips (optional/default 3) | Service only (not currently invoked) | Array of departures |
+| getNextDeparturesForStop | stopCode (required), numOfTrips (optional/default 3) | Yes (fallback path) | Array of departures |
 | getRoutes | none | No (known only) | Object keyed by route short name |
+| routes-schedules embedded JS | route (required), routeView=trips | Yes (primary for timetable alignment) | Objects including ROUTE_SCHEDULES_BY_STOP |
 
 ## Notes For Future API Work
 
@@ -321,3 +385,6 @@ The following app functions are placeholders and currently do not hit a backend 
 - A confirmed stops endpoint is still needed to replace derived stop lists from pattern points.
 - A confirmed arrivals/ETA endpoint is still needed to power stop detail arrivals in real time.
 - Calendar/service-level integration is pending endpoint discovery or page scraping strategy.
+- If the app only needs next few departures, the direct bt_routes getNextDeparturesForStop endpoint is enough.
+- If the app needs full cycle-consistent stop timing (especially loop/repeated-stop routes),
+  the trips page embedded ROUTE_SCHEDULES_BY_STOP data is the most complete source currently known.
