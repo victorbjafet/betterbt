@@ -4,13 +4,21 @@
  */
 
 import { API_ENDPOINTS, CORS_PROXY } from '@/constants/config';
+import { DEBUG_MOCK_API_FLAG_FILE, DEBUG_USE_MOCK_API } from '@/constants/debug';
 import { STATIC_ROUTES } from '@/constants/staticTransitData';
 import { BtAlert, BtArrival, BtDeparture, BtPattern, BtPatternPoint, BtRoute, BtStop, BtVehicle } from '@/types/btApi';
 import { Platform } from 'react-native';
+import * as mockApi from './btApi.mock';
 import { fetchTripsPageEmbeddedJson } from './routeScheduleHtml';
 
 const BASE = API_ENDPOINTS.BT_AJAX_BASE;
 const ROUTES_BASE = API_ENDPOINTS.BT_ROUTES_AJAX_BASE;
+
+if (DEBUG_USE_MOCK_API) {
+  console.info(
+    `[btApi] Showcase mock mode active (enabled by ${DEBUG_MOCK_API_FLAG_FILE}). Live network requests are bypassed.`
+  );
+}
 
 interface BtAjaxResponse<T> {
   success: boolean;
@@ -286,6 +294,10 @@ const normalizeBooleanFlag = (value: string | boolean | undefined): boolean | un
  * Called every 15 seconds
  */
 export const fetchVehicles = async (): Promise<BtVehicle[]> => {
+  if (DEBUG_USE_MOCK_API) {
+    return mockApi.fetchVehicles();
+  }
+
   try {
     const vehicles = await postJson<BtVehicleRaw[]>('getBuses');
 
@@ -328,6 +340,10 @@ export const fetchVehicles = async (): Promise<BtVehicle[]> => {
  * Called once on app load, cached for session
  */
 export const fetchRoutes = async (): Promise<BtRoute[]> => {
+  if (DEBUG_USE_MOCK_API) {
+    return mockApi.fetchRoutes();
+  }
+
   return STATIC_ROUTES;
 };
 
@@ -335,6 +351,10 @@ export const fetchRoutes = async (): Promise<BtRoute[]> => {
  * Fetch route patterns (pattern names keyed by route)
  */
 export const fetchRoutePatterns = async (): Promise<BtPattern[]> => {
+  if (DEBUG_USE_MOCK_API) {
+    return mockApi.fetchRoutePatterns();
+  }
+
   return postJson<BtPattern[]>('getRoutePatterns');
 };
 
@@ -342,6 +362,10 @@ export const fetchRoutePatterns = async (): Promise<BtPattern[]> => {
  * Fetch all geometry points for a specific pattern name
  */
 export const fetchPatternPoints = async (patternName: string): Promise<BtPatternPoint[]> => {
+  if (DEBUG_USE_MOCK_API) {
+    return mockApi.fetchPatternPoints(patternName);
+  }
+
   return postJsonWithParams<BtPatternPoint[]>('getPatternPoints', {
     patternName,
   });
@@ -354,6 +378,10 @@ export const fetchNextDeparturesForStop = async (
   stopCode: string,
   numOfTrips = 3
 ): Promise<BtDeparture[]> => {
+  if (DEBUG_USE_MOCK_API) {
+    return mockApi.fetchNextDeparturesForStop(stopCode, numOfTrips);
+  }
+
   return postJsonFormWithParams<BtDeparture[]>(ROUTES_BASE, 'getNextDeparturesForStop', {
     stopCode,
     numOfTrips,
@@ -361,6 +389,10 @@ export const fetchNextDeparturesForStop = async (
 };
 
 export const fetchRouteTripsPageEmbeddedJson = async (routeShortName: string) => {
+  if (DEBUG_USE_MOCK_API) {
+    return mockApi.fetchRouteTripsPageEmbeddedJson(routeShortName);
+  }
+
   return fetchTripsPageEmbeddedJson(routeShortName);
 };
 
@@ -369,6 +401,10 @@ export const fetchRouteTripsPageEmbeddedJson = async (routeShortName: string) =>
  * Called once on app load, cached for session
  */
 export const fetchStops = async (): Promise<BtStop[]> => {
+  if (DEBUG_USE_MOCK_API) {
+    return mockApi.fetchStops();
+  }
+
   // Stop metadata endpoint is not yet confirmed for this feed.
   // Return an empty list so callers can handle graceful loading.
   return [];
@@ -379,6 +415,10 @@ export const fetchStops = async (): Promise<BtStop[]> => {
  * Called when user views a stop detail screen
  */
 export const fetchArrivals = async (stopId: string): Promise<BtArrival[]> => {
+  if (DEBUG_USE_MOCK_API) {
+    return mockApi.fetchArrivals(stopId);
+  }
+
   try {
     // Stop arrivals endpoint is not yet confirmed for this feed.
     // Return an empty list so callers can handle graceful loading.
@@ -395,6 +435,10 @@ export const fetchArrivals = async (stopId: string): Promise<BtArrival[]> => {
  * Called on app load and periodically (5 minute interval)
  */
 export const fetchAlerts = async (): Promise<BtAlert[]> => {
+  if (DEBUG_USE_MOCK_API) {
+    return mockApi.fetchAlerts();
+  }
+
   try {
     const alerts = await postJson<BtAlertRaw[]>('getActiveAlerts');
 

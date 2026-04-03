@@ -3,26 +3,30 @@
  * Safe area + scroll handling for screens
  */
 
-import React from 'react';
-import { StyleSheet, View, ScrollView } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/useTheme';
+import React from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface ScreenWrapperProps {
   children: React.ReactNode;
   scrollable?: boolean;
+  includeTopInset?: boolean;
+  includeBottomInset?: boolean;
 }
 
 export const ScreenWrapper: React.FC<ScreenWrapperProps> = ({
   children,
   scrollable = false,
+  includeTopInset = true,
+  includeBottomInset = true,
 }) => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
 
   const containerStyle = {
-    paddingTop: insets.top,
-    paddingBottom: insets.bottom,
+    paddingTop: includeTopInset ? insets.top : 0,
+    paddingBottom: includeBottomInset ? insets.bottom : 0,
     paddingLeft: insets.left,
     paddingRight: insets.right,
   };

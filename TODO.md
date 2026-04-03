@@ -139,6 +139,22 @@
   - [x] Saves space on mobile, shows more map
   - **Tech**: State toggle + conditional rendering, responsive layout
 
+#### iOS App Support & Stability
+- [ ] Add end-to-end iOS app support hardening
+  - [ ] Verify app lifecycle behavior across foreground/background transitions on iOS
+  - [ ] Validate navigation root state restore on resume/cold start
+  - [ ] Confirm production build settings in `app.config.js` / Expo config for iOS
+- [ ] Fix iOS "app disappearing" issue
+  - [ ] Reproduce consistently (device + iOS version + steps)
+  - [ ] Capture logs/crash diagnostics during disappearance event
+  - [ ] Identify whether issue is crash, process kill, or navigation/state unmount bug
+  - [ ] Implement fix and regression test across simulator + physical iPhone
+- [ ] Tune vertical safe-area spacing so rounded corners stay visible at all window sizes
+  - [ ] Add adaptive top and bottom padding in both portrait and landscape orientations
+  - [ ] Ensure padding scales by screen/window height (phone, tablet, split view)
+  - [ ] Cap minimum/maximum spacing to avoid excessive empty space
+  - [ ] Verify visually on iOS + Android and web responsive breakpoints
+
 ---
 
 ## Phase 2: Advanced Features & Data Completeness
@@ -367,6 +383,20 @@
   - [ ] Leaflet map responsive
   - [ ] Keyboard navigation (tab through buttons)
   - [ ] Screen reader compatibility (ARIA labels)
+
+#### Web Branding & Metadata
+- [ ] Add production web branding assets
+  - [ ] Add favicon set (ICO + PNG sizes) for browser tabs and bookmarks
+  - [ ] Add site logo assets for header/share previews
+  - [ ] Verify PWA/app icons are consistent with BetterBT branding
+- [ ] Set webpage names and document metadata
+  - [ ] Set default site title and per-page titles (Routes, Alerts, Route Detail, Stop Detail)
+  - [ ] Add clear meta description for search/share contexts
+  - [ ] Ensure canonical site name is consistent across app config and web head tags
+- [ ] Add share/embed metadata for link previews
+  - [ ] Configure Open Graph tags (`og:title`, `og:description`, `og:image`, `og:url`)
+  - [ ] Configure Twitter/X card tags (`twitter:card`, `twitter:title`, `twitter:description`, `twitter:image`)
+  - [ ] Validate embeds in common preview tools before launch
 
 ---
 

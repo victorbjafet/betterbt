@@ -31,6 +31,9 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
+*.xcuserstate
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
 
 # Metro
 .metro-health-check*
@@ -70,6 +73,7 @@ Thumbs.db
 *.tmp
 *.temp
 *.bak
+debug/mock-api.enabled
 
 # typescript
 *.tsbuildinfo

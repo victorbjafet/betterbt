@@ -54,3 +54,32 @@ npx expo start
 
 - API behavior and probe details are documented in `API_DOCUMENTATION.md`.
 - Planning notes are in `bt-app-plan.md`.
+
+## Showcase Mock API Mode
+
+BetterBT includes a file-gated mock API mode for demos when the RideBT API is unavailable.
+
+How it works:
+- If the file `debug/mock-api.enabled` exists at project root, app startup enables mock mode.
+- If the file is missing, BetterBT uses the live RideBT API.
+
+Enable mock mode:
+
+```bash
+mkdir -p debug && touch debug/mock-api.enabled
+npx expo start -c
+```
+
+Disable mock mode:
+
+```bash
+rm -f debug/mock-api.enabled
+npx expo start -c
+```
+
+Mock responses mirror the documented endpoint shapes for:
+- `getBuses`
+- `getRoutePatterns`
+- `getPatternPoints`
+- `getNextDeparturesForStop`
+- `getActiveAlerts`

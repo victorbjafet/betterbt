@@ -143,6 +143,7 @@ export default function RoutesScreen() {
   const [isMapExpanded, setIsMapExpanded] = useState(false);
   const [resetViewToken, setResetViewToken] = useState(0);
   const [fullscreenViewToken, setFullscreenViewToken] = useState(0);
+  const [mapRenderNonce, setMapRenderNonce] = useState(0);
   const [mapLayoutVersion, setMapLayoutVersion] = useState(0);
   const [pendingLayoutRecenter, setPendingLayoutRecenter] = useState(false);
   const mapLayoutRef = useRef<{ width: number; height: number } | null>(null);
@@ -684,6 +685,12 @@ export default function RoutesScreen() {
     setPendingLayoutRecenter(true);
     setIsMapExpanded((current) => !current);
     setFullscreenViewToken((current) => current + 1);
+
+    // iOS can drop the native map surface after aggressive layout changes.
+    // Force a remount so collapse/expand always redraws correctly.
+    if (Platform.OS === 'ios') {
+      setMapRenderNonce((current) => current + 1);
+    }
   };
 
   const focusStopTemporarily = (stopId: string) => {
@@ -968,7 +975,7 @@ export default function RoutesScreen() {
   }
 
   return (
-    <ScreenWrapper>
+    <ScreenWrapper includeTopInset={false} includeBottomInset={false}>
       <View style={[styles.container, isWideLayout ? styles.containerWide : styles.containerStack]}>
         {isWideLayout ? (
           <>
@@ -1074,6 +1081,7 @@ export default function RoutesScreen() {
               <View style={[styles.mapPanelContainer, styles.mapPanelContainerWide]} onLayout={handleMapLayout}>
                 <View style={[styles.mapPanel, { borderColor: theme.BORDER }]}> 
                   <MapView
+                    key={`wide-map-${mapRenderNonce}`}
                     buses={displayedBuses}
                     stops={selectedRouteStops}
                     stopDeparturesById={stopDeparturesById}
@@ -1183,6 +1191,7 @@ export default function RoutesScreen() {
               <View style={styles.mapPanelContainer} onLayout={handleMapLayout}>
                 <View style={[styles.mapPanel, styles.mapPanelStack, { borderColor: theme.BORDER }]}> 
                   <MapView
+                    key={`stack-map-${mapRenderNonce}`}
                     buses={displayedBuses}
                     stops={selectedRouteStops}
                     stopDeparturesById={stopDeparturesById}
@@ -1402,7 +1411,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     gap: 12,
-    padding: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 0,
   },
   containerWide: {
     flexDirection: 'row',
