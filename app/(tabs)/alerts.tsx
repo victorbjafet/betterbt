@@ -3,15 +3,18 @@
  * Displays all current service alerts
  */
 
-import React from 'react';
-import { StyleSheet, Text, View, FlatList } from 'react-native';
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
+import { AlertBanner } from '@/components/ui/AlertBanner';
+import { InlineErrorState } from '@/components/ui/InlineErrorState';
 import { useAlerts } from '@/hooks/useAlerts';
 import { useTheme } from '@/hooks/useTheme';
+import { trackEvent } from '@/services/telemetry';
+import React from 'react';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 
 export default function AlertsScreen() {
   const theme = useTheme();
-  const { data: alerts = [], isLoading, error } = useAlerts();
+  const { data: alerts = [], isLoading, error, refetch } = useAlerts();
 
   const alertBg = theme.isDark
     ? { info: '#0D1F35', warning: '#2D1A00', critical: '#2D0707' }
@@ -22,6 +25,7 @@ export default function AlertsScreen() {
     warning:  { bg: alertBg.warning,  border: theme.WARNING },
     critical: { bg: alertBg.critical, border: theme.ERROR },
   };
+  const featuredAlert = alerts.find((alert) => alert.severity === 'critical') ?? alerts[0] ?? null;
 
   if (isLoading) {
     return (
@@ -36,15 +40,22 @@ export default function AlertsScreen() {
   if (error) {
     return (
       <ScreenWrapper>
-        <View style={styles.centerContainer}>
-          <Text style={{ color: theme.ERROR }}>Failed to load alerts</Text>
-        </View>
+        <InlineErrorState
+          title="Failed to load alerts"
+          message="Alerts could not be fetched."
+          retryLabel="Retry alerts"
+          onRetry={() => {
+            trackEvent('alerts.retry_pressed');
+            void refetch();
+          }}
+        />
       </ScreenWrapper>
     );
   }
 
   return (
     <ScreenWrapper scrollable>
+      {featuredAlert ? <AlertBanner alert={featuredAlert} /> : null}
       <FlatList
         data={alerts}
         keyExtractor={(item) => item.id}

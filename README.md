@@ -20,6 +20,8 @@ The goal of BetterBT is to make BT travel easier and less stressful by giving ri
 - Route and stop views with map overlays
 - Saved/favorite route support for quick access
 - Fallback scheduling logic for better resilience when data is limited
+- Map crash boundary with graceful fallback and retry actions
+- Lightweight telemetry hooks for route/favorite usage and error events
 - Mobile-first experience built with Expo and React Native
 
 ## Quick Start

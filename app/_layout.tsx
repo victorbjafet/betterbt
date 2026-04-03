@@ -1,7 +1,7 @@
-import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
+import React from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -19,11 +19,12 @@ export default function RootLayout() {
         <Stack
           screenOptions={{
             headerShown: false,
+            title: 'BetterBT',
           }}
         >
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="route/[id]" />
-          <Stack.Screen name="stop/[id]" />
+          <Stack.Screen name="(tabs)" options={{ title: 'Routes' }} />
+          <Stack.Screen name="route/[id]" options={{ title: 'Route Detail' }} />
+          <Stack.Screen name="stop/[id]" options={{ title: 'Stop Detail' }} />
         </Stack>
       </SafeAreaProvider>
     </QueryClientProvider>

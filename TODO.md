@@ -3,10 +3,10 @@
 ## Push Preparation (Apr 2026)
 
 - [x] Update `.gitignore` for local env files and temp artifacts
-- [ ] Review `git status` and keep only intended feature changes in this push
-- [ ] Run lint and type checks before pushing (`npm run lint`)
-- [ ] Verify routes tab flow after live map consolidation
-- [ ] Update `README.md` with current tab/screen behavior changes
+- [x] Review `git status` and keep only intended feature changes in this push
+- [x] Run lint and type checks before pushing (`npm run lint`)
+- [x] Verify routes tab flow after live map consolidation
+- [x] Update `README.md` with current tab/screen behavior changes
 
 ## Phase 1: Foundation (Core Features)
 
@@ -149,11 +149,11 @@
   - [ ] Capture logs/crash diagnostics during disappearance event
   - [ ] Identify whether issue is crash, process kill, or navigation/state unmount bug
   - [ ] Implement fix and regression test across simulator + physical iPhone
-- [ ] Tune vertical safe-area spacing so rounded corners stay visible at all window sizes
-  - [ ] Add adaptive top and bottom padding in both portrait and landscape orientations
-  - [ ] Ensure padding scales by screen/window height (phone, tablet, split view)
-  - [ ] Cap minimum/maximum spacing to avoid excessive empty space
-  - [ ] Verify visually on iOS + Android and web responsive breakpoints
+- [x] Tune vertical safe-area spacing so rounded corners stay visible at all window sizes
+  - [x] Add adaptive top and bottom padding in both portrait and landscape orientations
+  - [x] Ensure padding scales by screen/window height (phone, tablet, split view)
+  - [x] Cap minimum/maximum spacing to avoid excessive empty space
+  - [x] Verify visually on iOS + Android and web responsive breakpoints
 
 ---
 
@@ -385,18 +385,18 @@
   - [ ] Screen reader compatibility (ARIA labels)
 
 #### Web Branding & Metadata
-- [ ] Add production web branding assets
-  - [ ] Add favicon set (ICO + PNG sizes) for browser tabs and bookmarks
-  - [ ] Add site logo assets for header/share previews
-  - [ ] Verify PWA/app icons are consistent with BetterBT branding
-- [ ] Set webpage names and document metadata
-  - [ ] Set default site title and per-page titles (Routes, Alerts, Route Detail, Stop Detail)
-  - [ ] Add clear meta description for search/share contexts
-  - [ ] Ensure canonical site name is consistent across app config and web head tags
-- [ ] Add share/embed metadata for link previews
-  - [ ] Configure Open Graph tags (`og:title`, `og:description`, `og:image`, `og:url`)
-  - [ ] Configure Twitter/X card tags (`twitter:card`, `twitter:title`, `twitter:description`, `twitter:image`)
-  - [ ] Validate embeds in common preview tools before launch
+- [x] Add production web branding assets
+  - [x] Add favicon set (ICO + PNG sizes) for browser tabs and bookmarks
+  - [x] Add site logo assets for header/share previews
+  - [x] Verify PWA/app icons are consistent with BetterBT branding
+- [x] Set webpage names and document metadata
+  - [x] Set default site title and per-page titles (Routes, Alerts, Route Detail, Stop Detail)
+  - [x] Add clear meta description for search/share contexts
+  - [x] Ensure canonical site name is consistent across app config and web head tags
+- [x] Add share/embed metadata for link previews
+  - [x] Configure Open Graph tags (`og:title`, `og:description`, `og:image`, `og:url`)
+  - [x] Configure Twitter/X card tags (`twitter:card`, `twitter:title`, `twitter:description`, `twitter:image`)
+  - [x] Validate embeds in common preview tools before launch
 
 ---
 
@@ -405,30 +405,31 @@
 ### 12. Code Quality
 
 #### Dead Code & Structure Cleanup
-- [ ] Remove or integrate currently unused files/components
-  - [ ] `components/map/RoutePolyline.tsx` (unused placeholder)
-  - [ ] `components/ui/AlertBanner.tsx` (implemented but not rendered)
-  - [ ] `store/busStore.ts` and `store/routeStore.ts` (unused alongside React Query)
-  - [ ] `app/(tabs)/explore.tsx` (template screen not in tab layout)
-- [ ] Keep roadmap/docs aligned with implementation status (`README.md`, `API_DOCUMENTATION.md`, `TODO.md`)
+- [x] Remove or integrate currently unused files/components
+  - [x] `components/map/RoutePolyline.tsx` (unused placeholder)
+  - [x] `components/ui/AlertBanner.tsx` (integrated into active screens)
+  - [x] `store/busStore.ts` and `store/routeStore.ts` (removed; React Query remains source of truth)
+  - [x] `app/(tabs)/explore.tsx` (removed template screen)
+- [x] Keep roadmap/docs aligned with implementation status (`README.md`, `API_DOCUMENTATION.md`, `TODO.md`)
 
 #### Error Boundaries & Fallback UI
-- [ ] Add React error boundary for map crashes
-- [ ] Add retry buttons on API errors
-- [ ] Graceful degradation if maps don't load
+- [x] Add React error boundary for map crashes
+- [x] Add retry buttons on API errors
+- [x] Graceful degradation if maps don't load
 
 #### TypeScript Strictness
-- [ ] Enable strict mode in `tsconfig.json`
-- [ ] Fix any `any` types in transit data models
+- [x] Enable strict mode in `tsconfig.json`
+- [x] Fix any `any` types in transit data models
 
 #### Performance Optimization
-- [ ] Memoize heavy list renders (routes, stops)
-- [ ] Lazy-load route geometry (only on selection)
-- [ ] Limit map marker rendering at high zoom out
+- [x] Memoize heavy list renders (routes, stops)
+- [x] Lazy-load route geometry (only on selection)
+- [x] Limit map marker rendering at high zoom out
 
 #### Analytics & Logging
-- [ ] Add basic usage telemetry (route views, favorite counts)
-- [ ] Error tracking (Sentry or similar)
+- [x] Add basic usage telemetry (route views, favorite counts)
+- [x] Error tracking (Sentry or similar)
+  - [x] Added lightweight in-app error event logging hooks; full external sink integration remains optional.
 
 ---
 

@@ -8,34 +8,31 @@ import { MAP_CONFIG, REFRESH_INTERVALS } from '@/constants/config';
 import { blendCoordinates, distanceMeters, interpolateCoordinate, predictBusCoordinate } from '@/services/map/busPrediction';
 import { Bus, RouteGeometryPath, Stop } from '@/types/transit';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { TransitMapViewProps } from './types';
+
+type LeafletLikeComponent = React.ComponentType<Record<string, unknown>>;
 
 type LeafletModules = {
-  MapContainer: React.ComponentType<any>;
-  TileLayer: React.ComponentType<any>;
-  Marker: React.ComponentType<any>;
-  Tooltip: React.ComponentType<any>;
-  CircleMarker: React.ComponentType<any>;
-  Polyline: React.ComponentType<any>;
-  useMap: () => any;
+  MapContainer: LeafletLikeComponent;
+  TileLayer: LeafletLikeComponent;
+  Marker: LeafletLikeComponent;
+  Tooltip: LeafletLikeComponent;
+  CircleMarker: LeafletLikeComponent;
+  Polyline: LeafletLikeComponent;
+  useMap: () => import('leaflet').Map;
   L: typeof import('leaflet');
 };
 
-interface MapViewProps {
-  buses: Bus[];
-  stops?: Stop[];
-  stopDeparturesById?: Record<string, string[]>;
-  routePaths?: RouteGeometryPath[];
-  predictionRoutePaths?: RouteGeometryPath[];
-  selectedRouteId?: string;
-  resetViewToken?: number;
-  fullscreenViewToken?: number;
-  layoutVersion?: number;
-  focusedBus?: Bus | null;
-  focusedStop?: Stop | null;
-  onBusPress?: (bus: Bus) => void;
-  onStopPress?: (stop: Stop) => void;
-  onMapPress?: () => void;
-}
+type LeafletInteractionEvent = {
+  originalEvent?: {
+    stopPropagation?: () => void;
+    target?: EventTarget | null;
+  };
+  latlng?: {
+    lat: number;
+    lng: number;
+  };
+};
 
 export default function TransitMapView({
   buses,
@@ -52,7 +49,7 @@ export default function TransitMapView({
   onBusPress,
   onStopPress,
   onMapPress,
-}: MapViewProps) {
+}: TransitMapViewProps) {
   const SNAP_TO_REAL_POSITION_METERS = 28;
   const LOW_MOVEMENT_THRESHOLD_METERS = 8;
   const LOW_MOVEMENT_END_BLEND_FACTOR = 0.45;
@@ -60,6 +57,9 @@ export default function TransitMapView({
   const STOP_SELECTION_RADIUS_METERS = 28;
 
   const [leaflet, setLeaflet] = useState<LeafletModules | null>(null);
+  const [leafletLoadError, setLeafletLoadError] = useState<string | null>(null);
+  const [isLeafletLoadTimedOut, setIsLeafletLoadTimedOut] = useState(false);
+  const [mapZoom, setMapZoom] = useState<number>(MAP_CONFIG.INITIAL_ZOOM);
   const motionTrackRef = useRef<Record<string, {
     start: { latitude: number; longitude: number };
     end: { latitude: number; longitude: number };
@@ -357,31 +357,46 @@ export default function TransitMapView({
 
   useEffect(() => {
     let isMounted = true;
+    let didFinishLoad = false;
+    const timeoutId = window.setTimeout(() => {
+      if (!isMounted) return;
+      if (!didFinishLoad) {
+        setIsLeafletLoadTimedOut(true);
+      }
+    }, 8000);
 
     const loadLeaflet = async () => {
-      const [reactLeaflet, leafletLib] = await Promise.all([
-        import('react-leaflet'),
-        import('leaflet'),
-      ]);
+      try {
+        const [reactLeaflet, leafletLib] = await Promise.all([
+          import('react-leaflet'),
+          import('leaflet'),
+        ]);
 
-      if (!isMounted) return;
+        if (!isMounted) return;
+        didFinishLoad = true;
 
-      setLeaflet({
-        MapContainer: reactLeaflet.MapContainer,
-        TileLayer: reactLeaflet.TileLayer,
-        Marker: reactLeaflet.Marker,
-        Tooltip: reactLeaflet.Tooltip,
-        CircleMarker: reactLeaflet.CircleMarker,
-        Polyline: reactLeaflet.Polyline,
-        useMap: reactLeaflet.useMap,
-        L: leafletLib,
-      });
+        setLeaflet({
+          MapContainer: reactLeaflet.MapContainer as unknown as LeafletLikeComponent,
+          TileLayer: reactLeaflet.TileLayer as unknown as LeafletLikeComponent,
+          Marker: reactLeaflet.Marker as unknown as LeafletLikeComponent,
+          Tooltip: reactLeaflet.Tooltip as unknown as LeafletLikeComponent,
+          CircleMarker: reactLeaflet.CircleMarker as unknown as LeafletLikeComponent,
+          Polyline: reactLeaflet.Polyline as unknown as LeafletLikeComponent,
+          useMap: reactLeaflet.useMap,
+          L: leafletLib,
+        });
+      } catch (error) {
+        if (!isMounted) return;
+        didFinishLoad = true;
+        setLeafletLoadError(error instanceof Error ? error.message : 'Unknown map initialization error');
+      }
     };
 
     void loadLeaflet();
 
     return () => {
       isMounted = false;
+      window.clearTimeout(timeoutId);
     };
   }, []);
 
@@ -423,9 +438,9 @@ export default function TransitMapView({
       : [MAP_CONFIG.INITIAL_LATITUDE, MAP_CONFIG.INITIAL_LONGITUDE];
 
   const busIcons = useMemo(() => {
-    if (!leaflet) return {} as Record<string, ReturnType<typeof leaflet.L.divIcon>>;
+    if (!leaflet) return {} as Record<string, import('leaflet').DivIcon>;
 
-    return filteredBuses.reduce<Record<string, ReturnType<typeof leaflet.L.divIcon>>>((acc, bus) => {
+    return filteredBuses.reduce<Record<string, import('leaflet').DivIcon>>((acc, bus) => {
       acc[bus.id] = leaflet.L.divIcon({
         className: 'betterbt-bus-icon',
         iconSize: [34, 34],
@@ -510,6 +525,20 @@ export default function TransitMapView({
 
     return null;
   }, [clickedBus, selectedBusLive]);
+
+  const visibleStops = useMemo(() => {
+    if (mapZoom <= 12) return [];
+    if (mapZoom <= 14) return filteredStops.slice(0, 180);
+    return filteredStops;
+  }, [filteredStops, mapZoom]);
+
+  if (leafletLoadError) {
+    return <div style={styles.errorState}>Map unavailable: {leafletLoadError}</div>;
+  }
+
+  if (isLeafletLoadTimedOut && !leaflet) {
+    return <div style={styles.errorState}>Map is taking too long to initialize. Check your network and retry.</div>;
+  }
 
   if (!leaflet) {
     return <div style={styles.loadingState}>Loading map...</div>;
@@ -675,9 +704,10 @@ export default function TransitMapView({
 
   const HandleMapBackgroundClick: React.FC = () => {
     const map = leaflet.useMap();
+    type LeafletMouseEvent = import('leaflet').LeafletMouseEvent;
 
     useEffect(() => {
-      const onClick = (event: any) => {
+      const onClick = (event: LeafletMouseEvent) => {
         if (Date.now() - lastMarkerInteractionAtRef.current < 300) {
           return;
         }
@@ -700,6 +730,24 @@ export default function TransitMapView({
       map.on('click', onClick);
       return () => {
         map.off('click', onClick);
+      };
+    }, [map]);
+
+    return null;
+  };
+
+  const HandleZoomTracking: React.FC = () => {
+    const map = leaflet.useMap();
+
+    useEffect(() => {
+      const handleZoomEnd = () => {
+        setMapZoom(map.getZoom());
+      };
+
+      handleZoomEnd();
+      map.on('zoomend', handleZoomEnd);
+      return () => {
+        map.off('zoomend', handleZoomEnd);
       };
     }, [map]);
 
@@ -905,6 +953,7 @@ export default function TransitMapView({
           focusedBus={selectedBusLive}
         />
         <HandleMapResize />
+        <HandleZoomTracking />
         <HandleMapBackgroundClick />
 
         <TileLayer
@@ -918,7 +967,7 @@ export default function TransitMapView({
             positions={path.coordinates.map((point) => [point.latitude, point.longitude])}
             pathOptions={{ color: path.color, weight: 4, opacity: 0.78 }}
             eventHandlers={{
-              click: (event) => {
+              click: (event: LeafletInteractionEvent) => {
                 event.originalEvent?.stopPropagation?.();
                 const latlng = event.latlng;
                 if (!latlng) return;
@@ -928,7 +977,7 @@ export default function TransitMapView({
           />
         ))}
 
-        {filteredStops.map((stop) => (
+        {visibleStops.map((stop) => (
           <CircleMarker
             key={stop.id}
             center={[stop.latitude, stop.longitude]}
@@ -941,16 +990,16 @@ export default function TransitMapView({
               bubblingMouseEvents: false,
             }}
             eventHandlers={{
-              click: (event) => {
+              click: (event: LeafletInteractionEvent) => {
                 event.originalEvent?.stopPropagation?.();
                 lastMarkerInteractionAtRef.current = Date.now();
                 onStopPress?.(stop);
               },
-              mousedown: (event) => {
+              mousedown: (event: LeafletInteractionEvent) => {
                 event.originalEvent?.stopPropagation?.();
                 lastMarkerInteractionAtRef.current = Date.now();
               },
-              touchstart: (event) => {
+              touchstart: (event: LeafletInteractionEvent) => {
                 event.originalEvent?.stopPropagation?.();
                 lastMarkerInteractionAtRef.current = Date.now();
               },
@@ -1011,7 +1060,7 @@ export default function TransitMapView({
             position={[bus.latitude, bus.longitude]}
             icon={busIcons[bus.id]}
             eventHandlers={{
-              click: (event) => {
+              click: (event: LeafletInteractionEvent) => {
                 event.originalEvent?.stopPropagation?.();
                 lastMarkerInteractionAtRef.current = Date.now();
                 setClickedBus({

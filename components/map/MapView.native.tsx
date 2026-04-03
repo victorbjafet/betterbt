@@ -6,12 +6,13 @@
 
 import { MAP_CONFIG, REFRESH_INTERVALS } from '@/constants/config';
 import { blendCoordinates, distanceMeters, interpolateCoordinate, predictBusCoordinate } from '@/services/map/busPrediction';
-import { Bus, RouteGeometryPath, Stop } from '@/types/transit';
+import { Bus, Stop } from '@/types/transit';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { BusMarker } from './BusMarker';
 import { StopMarker } from './StopMarker';
+import { TransitMapViewProps } from './types';
 
 const INITIAL_REGION = {
   latitude: MAP_CONFIG.INITIAL_LATITUDE,
@@ -19,23 +20,6 @@ const INITIAL_REGION = {
   latitudeDelta: 0.05,
   longitudeDelta: 0.05,
 };
-
-interface MapViewProps {
-  buses: Bus[];
-  stops?: Stop[];
-  stopDeparturesById?: Record<string, string[]>;
-  routePaths?: RouteGeometryPath[];
-  predictionRoutePaths?: RouteGeometryPath[];
-  selectedRouteId?: string;
-  resetViewToken?: number;
-  fullscreenViewToken?: number;
-  layoutVersion?: number;
-  focusedBus?: Bus | null;
-  focusedStop?: Stop | null;
-  onBusPress?: (bus: Bus) => void;
-  onStopPress?: (stop: Stop) => void;
-  onMapPress?: () => void;
-}
 
 export default function TransitMapView({
   buses,
@@ -52,7 +36,7 @@ export default function TransitMapView({
   onBusPress,
   onStopPress,
   onMapPress,
-}: MapViewProps) {
+}: TransitMapViewProps) {
   const SNAP_TO_REAL_POSITION_METERS = 28;
   const LOW_MOVEMENT_THRESHOLD_METERS = 8;
   const LOW_MOVEMENT_END_BLEND_FACTOR = 0.45;
@@ -60,7 +44,7 @@ export default function TransitMapView({
   const STOP_SELECTION_RADIUS_METERS = 28;
 
   const mapRef = useRef<MapView>(null);
-  const markerRefs = useRef<Record<string, any>>({});
+  const markerRefs = useRef<Record<string, React.ComponentRef<typeof Marker> | null>>({});
   const motionTrackRef = useRef<Record<string, {
     start: { latitude: number; longitude: number };
     end: { latitude: number; longitude: number };
@@ -71,6 +55,7 @@ export default function TransitMapView({
   const lastMarkerPressAtRef = useRef(0);
   const [isMapReady, setIsMapReady] = useState(false);
   const [displayBuses, setDisplayBuses] = useState<Bus[]>(buses);
+  const [visibleLatitudeDelta, setVisibleLatitudeDelta] = useState(INITIAL_REGION.latitudeDelta);
   const lastAutoFocusedRouteKey = useRef<string | null>(null);
   const didAutoFitAllBuses = useRef(false);
   const lastFollowAtMs = useRef(0);
@@ -167,34 +152,6 @@ export default function TransitMapView({
     return () => clearInterval(interval);
   }, []);
 
-  const getRegionForBuses = (points: { latitude: number; longitude: number }[]) => {
-    if (points.length === 0) return null;
-
-    if (points.length === 1) {
-      return {
-        latitude: points[0].latitude,
-        longitude: points[0].longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      };
-    }
-
-    const latitudes = points.map((point) => point.latitude);
-    const longitudes = points.map((point) => point.longitude);
-
-    const minLat = Math.min(...latitudes);
-    const maxLat = Math.max(...latitudes);
-    const minLng = Math.min(...longitudes);
-    const maxLng = Math.max(...longitudes);
-
-    const latitude = (minLat + maxLat) / 2;
-    const longitude = (minLng + maxLng) / 2;
-    const latitudeDelta = Math.max((maxLat - minLat) * 1.45, 0.01);
-    const longitudeDelta = Math.max((maxLng - minLng) * 1.45, 0.01);
-
-    return { latitude, longitude, latitudeDelta, longitudeDelta };
-  };
-
   const fitToBusCoordinates = (points: { latitude: number; longitude: number }[], animated = true) => {
     if (!mapRef.current || points.length === 0) return;
 
@@ -230,6 +187,11 @@ export default function TransitMapView({
         : stops,
     [selectedRouteId, stops]
   );
+  const visibleStops = useMemo(() => {
+    if (visibleLatitudeDelta > 0.2) return [];
+    if (visibleLatitudeDelta > 0.1) return filteredStops.slice(0, 220);
+    return filteredStops;
+  }, [filteredStops, visibleLatitudeDelta]);
 
   const selectNearestStopFromPoint = (latitude: number, longitude: number) => {
     if (filteredStops.length === 0) return false;
@@ -425,6 +387,9 @@ export default function TransitMapView({
         style={styles.map}
         initialRegion={INITIAL_REGION}
         onMapReady={() => setIsMapReady(true)}
+        onRegionChangeComplete={(region) => {
+          setVisibleLatitudeDelta(region.latitudeDelta);
+        }}
         onPress={(event) => {
           const elapsedSinceMarkerPress = Date.now() - lastMarkerPressAtRef.current;
           if (elapsedSinceMarkerPress < 300) return;
@@ -495,7 +460,7 @@ export default function TransitMapView({
         ))}
 
         {/* Stop Markers */}
-        {filteredStops.map((stop) => (
+        {visibleStops.map((stop) => (
           <Marker
             key={stop.id}
             coordinate={{

@@ -74,6 +74,7 @@ Thumbs.db
 *.temp
 *.bak
 debug/mock-api.enabled
+/debug/mock-api.enabled
 
 # typescript
 *.tsbuildinfo

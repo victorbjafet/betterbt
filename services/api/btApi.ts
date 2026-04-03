@@ -301,8 +301,8 @@ export const fetchVehicles = async (): Promise<BtVehicle[]> => {
   try {
     const vehicles = await postJson<BtVehicleRaw[]>('getBuses');
 
-    return vehicles
-      .map((vehicle) => {
+    const normalizedVehicles = vehicles
+      .map((vehicle): BtVehicle | null => {
         const state = vehicle.states?.[0];
         if (!state) return null;
 
@@ -311,7 +311,7 @@ export const fetchVehicles = async (): Promise<BtVehicle[]> => {
 
         if (typeof lat !== 'number' || typeof lng !== 'number') return null;
 
-        return {
+        const normalized: BtVehicle = {
           id: vehicle.id,
           routeID: vehicle.routeId,
           routeName: vehicle.patternName || vehicle.routeId,
@@ -320,15 +320,29 @@ export const fetchVehicles = async (): Promise<BtVehicle[]> => {
           lng,
           speed: Number(state.speed || 0),
           updated: normalizeEpochSeconds(state.version),
-          stopID: vehicle.stopId,
-          capacity: normalizeNumeric(vehicle.capacity),
-          percentOfCapacity: normalizeNumeric(vehicle.percentOfCapacity),
-          passengers: normalizeNumeric(state.passengers),
-          isBusAtStop: normalizeBooleanFlag(state.isBusAtStop),
-          tripStartOn: normalizeEpochSeconds(vehicle.tripStartOn),
-        } satisfies BtVehicle;
-      })
-      .filter((vehicle): vehicle is BtVehicle => vehicle !== null);
+        };
+
+        if (vehicle.stopId) normalized.stopID = vehicle.stopId;
+
+        const capacity = normalizeNumeric(vehicle.capacity);
+        if (capacity !== undefined) normalized.capacity = capacity;
+
+        const occupancy = normalizeNumeric(vehicle.percentOfCapacity);
+        if (occupancy !== undefined) normalized.percentOfCapacity = occupancy;
+
+        const passengers = normalizeNumeric(state.passengers);
+        if (passengers !== undefined) normalized.passengers = passengers;
+
+        const isBusAtStop = normalizeBooleanFlag(state.isBusAtStop);
+        if (isBusAtStop !== undefined) normalized.isBusAtStop = isBusAtStop;
+
+        const tripStartOn = normalizeEpochSeconds(vehicle.tripStartOn);
+        if (tripStartOn !== undefined) normalized.tripStartOn = tripStartOn;
+
+        return normalized;
+      });
+
+    return normalizedVehicles.filter((vehicle): vehicle is BtVehicle => vehicle !== null);
   } catch (error) {
     console.error('Failed to fetch vehicles:', error);
     throw error;

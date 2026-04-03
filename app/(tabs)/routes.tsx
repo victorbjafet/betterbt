@@ -4,7 +4,9 @@
  */
 
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
+import { MapErrorBoundary } from '@/components/map/MapErrorBoundary';
 import MapView from '@/components/map/MapView';
+import { InlineErrorState } from '@/components/ui/InlineErrorState';
 import { RouteChip } from '@/components/ui/RouteChip';
 import { useBusPositions } from '@/hooks/useBuses';
 import { useFavoriteRouteGeometry } from '@/hooks/useFavoriteRouteGeometry';
@@ -13,11 +15,13 @@ import { useRoutes } from '@/hooks/useRoutes';
 import { useRouteStops } from '@/hooks/useRouteStops';
 import { useRouteStopTimetable } from '@/hooks/useRouteStopTimetable';
 import { useTheme } from '@/hooks/useTheme';
+import { trackEvent } from '@/services/telemetry';
 import { Bus, Stop } from '@/types/transit';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, LayoutChangeEvent, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const API_REQUEST_ROUTE_ORDER = [
   'CAS',
@@ -129,9 +133,10 @@ const writePersistedFavoriteRouteIds = async (favoriteRouteIds: string[]): Promi
 
 export default function RoutesScreen() {
   const theme = useTheme();
-  const { width } = useWindowDimensions();
-  const { data: buses = [], isLoading: isBusesLoading } = useBusPositions();
-  const { data: routes = [], isLoading, error } = useRoutes();
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const { data: buses = [], isLoading: isBusesLoading, isError: isBusesError } = useBusPositions();
+  const { data: routes = [], isLoading, error, refetch: refetchRoutes } = useRoutes();
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
   const [selectedTimeCycleIndex, setSelectedTimeCycleIndex] = useState(0);
@@ -151,8 +156,26 @@ export default function RoutesScreen() {
   const stopRowOffsetByIdRef = useRef<Record<string, number>>({});
   const pendingStopScrollIdRef = useRef<string | null>(null);
   const hasHydratedFavoritesRef = useRef(false);
+  const lastTrackedRouteIdRef = useRef<string | null>(null);
+  const lastTrackedFavoriteCountRef = useRef<number>(0);
 
   const isWideLayout = width >= 900;
+  const isPortrait = height >= width;
+  const adaptiveVerticalPadding = useMemo(() => {
+    const shortestSide = Math.min(width, height);
+    const baseSpacing = isPortrait ? height * 0.013 : height * 0.01;
+    const compactBoost = shortestSide < 700 ? 1 : shortestSide > 1000 ? 3 : 2;
+
+    return Math.max(8, Math.min(18, Math.round(baseSpacing) + compactBoost));
+  }, [height, isPortrait, width]);
+  const topContentPadding = useMemo(
+    () => Math.max(8, Math.min(22, adaptiveVerticalPadding + Math.round(insets.top * 0.35))),
+    [adaptiveVerticalPadding, insets.top]
+  );
+  const bottomContentPadding = useMemo(
+    () => Math.max(8, Math.min(24, adaptiveVerticalPadding + Math.round(insets.bottom * 0.45))),
+    [adaptiveVerticalPadding, insets.bottom]
+  );
 
   const handleMapLayout = (event: LayoutChangeEvent) => {
     const { width: nextWidth, height: nextHeight } = event.nativeEvent.layout;
@@ -250,7 +273,8 @@ export default function RoutesScreen() {
   const alignedStopTimetableRows = stopTimetableRows;
   const isUsingTimetableFallback = stopTimetableResult?.source === 'fallback-html';
   const { data: selectedRouteGeometry = [] } = useRouteGeometry(selectedRouteId, selectedRoute?.color || '#2563EB');
-  const { data: favoriteRouteGeometry = [] } = useFavoriteRouteGeometry(favoriteRouteIds, routeColorById);
+  const favoriteRouteIdsForGeometry = isFavoritesMode ? favoriteRouteIds : [];
+  const { data: favoriteRouteGeometry = [] } = useFavoriteRouteGeometry(favoriteRouteIdsForGeometry, routeColorById);
   const selectedCycleGeometry = useMemo(() => {
     if (!selectedRouteId) return [];
     if (!selectedCycle) return selectedRouteGeometry;
@@ -596,7 +620,6 @@ export default function RoutesScreen() {
   }, [apiOrderIndexById, busesByRoute, nightPriorityIndexById, visibleRoutes]);
 
   const routeListData = showBusesLoadingEmptyState || showNoBusesListEmptyState ? [] : sortedVisibleRoutes;
-
   useEffect(() => {
     let isMounted = true;
 
@@ -618,6 +641,25 @@ export default function RoutesScreen() {
   useEffect(() => {
     if (!hasHydratedFavoritesRef.current) return;
     void writePersistedFavoriteRouteIds(favoriteRouteIds);
+  }, [favoriteRouteIds]);
+
+  useEffect(() => {
+    if (selectedRouteId === lastTrackedRouteIdRef.current) return;
+    lastTrackedRouteIdRef.current = selectedRouteId;
+
+    trackEvent('routes.route_selected', {
+      routeId: selectedRouteId,
+      isFavoritesMode,
+    });
+  }, [isFavoritesMode, selectedRouteId]);
+
+  useEffect(() => {
+    if (favoriteRouteIds.length === lastTrackedFavoriteCountRef.current) return;
+    lastTrackedFavoriteCountRef.current = favoriteRouteIds.length;
+
+    trackEvent('routes.favorite_count_changed', {
+      count: favoriteRouteIds.length,
+    });
   }, [favoriteRouteIds]);
 
   // Show currently fetched alerts from the shared alerts query.
@@ -651,6 +693,55 @@ export default function RoutesScreen() {
       </Pressable>
     );
   };
+
+  const handleRoutePress = useCallback((routeId: string) => {
+    setFavoritesViewEnabled(false);
+    setFocusedStopId(null);
+    setFocusedBusId(null);
+    setSelectedCycleId(null);
+    setSelectedRouteId((current) => (current === routeId ? null : routeId));
+  }, []);
+
+  const renderRouteItem = useCallback(({ item: route }: { item: (typeof routes)[number] }) => {
+    const isSelected = selectedRouteId === route.id;
+    const activeBusCount = busesByRoute[route.id] ?? 0;
+
+    return (
+      <Pressable
+        onPress={() => {
+          handleRoutePress(route.id);
+        }}
+        style={[
+          styles.routeItem,
+          {
+            borderBottomColor: theme.BORDER,
+            backgroundColor: isSelected ? theme.SURFACE_2 : 'transparent',
+          },
+        ]}
+      >
+        <Text
+          style={[
+            styles.routeFavoriteIndicator,
+            { color: favoriteRouteSet.has(route.id) ? '#DC2626' : theme.BORDER },
+          ]}
+        >
+          {favoriteRouteSet.has(route.id) ? '♥' : '♡'}
+        </Text>
+        <RouteChip routeName={route.shortName} size="medium" />
+
+        <View style={styles.routeInfo}>
+          <Text style={[styles.routeName, { color: theme.TEXT }]} numberOfLines={1}>
+            {route.name}
+          </Text>
+          <Text style={[styles.routeStatus, { color: theme.TEXT_SECONDARY }]}> 
+            {activeRouteIds.has(route.id)
+              ? `${activeBusCount} live bus${activeBusCount === 1 ? '' : 'es'}`
+              : 'No live buses'}
+          </Text>
+        </View>
+      </Pressable>
+    );
+  }, [activeRouteIds, busesByRoute, favoriteRouteSet, handleRoutePress, selectedRouteId, theme.BORDER, theme.SURFACE_2, theme.TEXT, theme.TEXT_SECONDARY]);
 
   const toggleFavoriteForSelectedRoute = () => {
     if (!selectedRoute) return;
@@ -967,16 +1058,36 @@ export default function RoutesScreen() {
   if (error) {
     return (
       <ScreenWrapper>
-        <View style={styles.centerContainer}>
-          <Text style={{ color: theme.ERROR }}>Failed to load routes</Text>
-        </View>
+        <InlineErrorState
+          title="Failed to load routes"
+          message="The routes endpoint is unreachable right now."
+          retryLabel="Retry routes"
+          onRetry={() => {
+            void refetchRoutes();
+          }}
+        />
       </ScreenWrapper>
     );
   }
 
   return (
     <ScreenWrapper includeTopInset={false} includeBottomInset={false}>
-      <View style={[styles.container, isWideLayout ? styles.containerWide : styles.containerStack]}>
+      <View
+        style={[
+          styles.container,
+          isWideLayout ? styles.containerWide : styles.containerStack,
+          {
+            paddingTop: topContentPadding,
+            paddingBottom: bottomContentPadding,
+          },
+        ]}
+      >
+        {isBusesError ? (
+          <InlineErrorState
+            title="Live buses are unavailable"
+            message="Showing fallback behavior until the live feed recovers."
+          />
+        ) : null}
         {isWideLayout ? (
           <>
             {!isMapExpanded ? (
@@ -1016,50 +1127,7 @@ export default function RoutesScreen() {
               <FlatList
                 data={routeListData}
                 keyExtractor={(item) => item.id}
-                renderItem={({ item: route }) => {
-                  const isSelected = selectedRouteId === route.id;
-                  const activeBusCount = busesByRoute[route.id] ?? 0;
-
-                  return (
-                    <Pressable
-                      onPress={() => {
-                        setFavoritesViewEnabled(false);
-                        setFocusedStopId(null);
-                        setFocusedBusId(null);
-                        setSelectedCycleId(null);
-                        setSelectedRouteId((current) => (current === route.id ? null : route.id));
-                      }}
-                      style={[
-                        styles.routeItem,
-                        {
-                          borderBottomColor: theme.BORDER,
-                          backgroundColor: isSelected ? theme.SURFACE_2 : 'transparent',
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.routeFavoriteIndicator,
-                          { color: favoriteRouteSet.has(route.id) ? '#DC2626' : theme.BORDER },
-                        ]}
-                      >
-                        {favoriteRouteSet.has(route.id) ? '♥' : '♡'}
-                      </Text>
-                      <RouteChip routeName={route.shortName} size="medium" />
-
-                      <View style={styles.routeInfo}>
-                        <Text style={[styles.routeName, { color: theme.TEXT }]} numberOfLines={1}>
-                          {route.name}
-                        </Text>
-                        <Text style={[styles.routeStatus, { color: theme.TEXT_SECONDARY }]}>
-                          {activeRouteIds.has(route.id)
-                            ? `${activeBusCount} live bus${activeBusCount === 1 ? '' : 'es'}`
-                            : 'No live buses'}
-                        </Text>
-                      </View>
-                    </Pressable>
-                  );
-                }}
+                renderItem={renderRouteItem}
                 ListEmptyComponent={
                   <View style={styles.listEmptyContainer}>
                     <Text style={{ color: theme.TEXT_SECONDARY }}>
@@ -1080,27 +1148,29 @@ export default function RoutesScreen() {
             <View style={[styles.mapColumn, isMapExpanded && styles.mapColumnExpanded]}>
               <View style={[styles.mapPanelContainer, styles.mapPanelContainerWide]} onLayout={handleMapLayout}>
                 <View style={[styles.mapPanel, { borderColor: theme.BORDER }]}> 
-                  <MapView
-                    key={`wide-map-${mapRenderNonce}`}
-                    buses={displayedBuses}
-                    stops={selectedRouteStops}
-                    stopDeparturesById={stopDeparturesById}
-                    routePaths={displayedRouteGeometry}
-                    predictionRoutePaths={displayedPredictionRouteGeometry}
-                    selectedRouteId={isFavoritesMode ? undefined : selectedRouteId || undefined}
-                    resetViewToken={resetViewToken}
-                    fullscreenViewToken={fullscreenViewToken}
-                    layoutVersion={mapLayoutVersion}
-                    focusedBus={focusedBus}
-                    focusedStop={focusedStopForMap}
-                    onBusPress={handleMapBusPress}
-                    onStopPress={(stop: Stop) => focusStopFromMap(stop.code?.trim() || stop.id)}
-                    onMapPress={() => {
-                      setFocusedBusId(null);
-                      setFocusedStopId(null);
-                      setFocusedStopSource(null);
-                    }}
-                  />
+                  <MapErrorBoundary>
+                    <MapView
+                      key={`wide-map-${mapRenderNonce}`}
+                      buses={displayedBuses}
+                      stops={selectedRouteStops}
+                      stopDeparturesById={stopDeparturesById}
+                      routePaths={displayedRouteGeometry}
+                      predictionRoutePaths={displayedPredictionRouteGeometry}
+                      selectedRouteId={isFavoritesMode ? undefined : selectedRouteId || undefined}
+                      resetViewToken={resetViewToken}
+                      fullscreenViewToken={fullscreenViewToken}
+                      layoutVersion={mapLayoutVersion}
+                      focusedBus={focusedBus}
+                      focusedStop={focusedStopForMap}
+                      onBusPress={handleMapBusPress}
+                      onStopPress={(stop: Stop) => focusStopFromMap(stop.code?.trim() || stop.id)}
+                      onMapPress={() => {
+                        setFocusedBusId(null);
+                        setFocusedStopId(null);
+                        setFocusedStopSource(null);
+                      }}
+                    />
+                  </MapErrorBoundary>
                 </View>
                 <Pressable
                   onPress={resetToAllBuses}
@@ -1190,27 +1260,29 @@ export default function RoutesScreen() {
             <View style={[styles.stackMapSection, isMapExpanded && styles.stackMapSectionExpanded]}>
               <View style={styles.mapPanelContainer} onLayout={handleMapLayout}>
                 <View style={[styles.mapPanel, styles.mapPanelStack, { borderColor: theme.BORDER }]}> 
-                  <MapView
-                    key={`stack-map-${mapRenderNonce}`}
-                    buses={displayedBuses}
-                    stops={selectedRouteStops}
-                    stopDeparturesById={stopDeparturesById}
-                    routePaths={displayedRouteGeometry}
-                    predictionRoutePaths={displayedPredictionRouteGeometry}
-                    selectedRouteId={isFavoritesMode ? undefined : selectedRouteId || undefined}
-                    resetViewToken={resetViewToken}
-                    fullscreenViewToken={fullscreenViewToken}
-                    layoutVersion={mapLayoutVersion}
-                    focusedBus={focusedBus}
-                    focusedStop={focusedStopForMap}
-                    onBusPress={handleMapBusPress}
-                    onStopPress={(stop: Stop) => focusStopFromMap(stop.code?.trim() || stop.id)}
-                    onMapPress={() => {
-                      setFocusedBusId(null);
-                      setFocusedStopId(null);
-                      setFocusedStopSource(null);
-                    }}
-                  />
+                  <MapErrorBoundary>
+                    <MapView
+                      key={`stack-map-${mapRenderNonce}`}
+                      buses={displayedBuses}
+                      stops={selectedRouteStops}
+                      stopDeparturesById={stopDeparturesById}
+                      routePaths={displayedRouteGeometry}
+                      predictionRoutePaths={displayedPredictionRouteGeometry}
+                      selectedRouteId={isFavoritesMode ? undefined : selectedRouteId || undefined}
+                      resetViewToken={resetViewToken}
+                      fullscreenViewToken={fullscreenViewToken}
+                      layoutVersion={mapLayoutVersion}
+                      focusedBus={focusedBus}
+                      focusedStop={focusedStopForMap}
+                      onBusPress={handleMapBusPress}
+                      onStopPress={(stop: Stop) => focusStopFromMap(stop.code?.trim() || stop.id)}
+                      onMapPress={() => {
+                        setFocusedBusId(null);
+                        setFocusedStopId(null);
+                        setFocusedStopSource(null);
+                      }}
+                    />
+                  </MapErrorBoundary>
                 </View>
                 <Pressable
                   onPress={resetToAllBuses}
@@ -1339,50 +1411,7 @@ export default function RoutesScreen() {
                   <FlatList
                     data={routeListData}
                     keyExtractor={(item) => item.id}
-                    renderItem={({ item: route }) => {
-                      const isSelected = selectedRouteId === route.id;
-                      const activeBusCount = busesByRoute[route.id] ?? 0;
-
-                      return (
-                        <Pressable
-                          onPress={() => {
-                            setFavoritesViewEnabled(false);
-                            setFocusedStopId(null);
-                            setFocusedBusId(null);
-                            setSelectedCycleId(null);
-                            setSelectedRouteId((current) => (current === route.id ? null : route.id));
-                          }}
-                          style={[
-                            styles.routeItem,
-                            {
-                              borderBottomColor: theme.BORDER,
-                              backgroundColor: isSelected ? theme.SURFACE_2 : 'transparent',
-                            },
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.routeFavoriteIndicator,
-                              { color: favoriteRouteSet.has(route.id) ? '#DC2626' : theme.BORDER },
-                            ]}
-                          >
-                            {favoriteRouteSet.has(route.id) ? '♥' : '♡'}
-                          </Text>
-                          <RouteChip routeName={route.shortName} size="medium" />
-
-                          <View style={styles.routeInfo}>
-                            <Text style={[styles.routeName, { color: theme.TEXT }]} numberOfLines={1}>
-                              {route.name}
-                            </Text>
-                            <Text style={[styles.routeStatus, { color: theme.TEXT_SECONDARY }]}> 
-                              {activeRouteIds.has(route.id)
-                                ? `${activeBusCount} live bus${activeBusCount === 1 ? '' : 'es'}`
-                                : 'No live buses'}
-                            </Text>
-                          </View>
-                        </Pressable>
-                      );
-                    }}
+                    renderItem={renderRouteItem}
                     ListEmptyComponent={
                       <View style={styles.listEmptyContainer}>
                         <Text style={{ color: theme.TEXT_SECONDARY }}>
