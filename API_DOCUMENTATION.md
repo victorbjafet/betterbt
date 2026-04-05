@@ -1,6 +1,6 @@
 # BetterBT API Documentation
 
-Last updated: 2026-04-02
+Last updated: 2026-04-05
 
 ## Overview
 
@@ -13,8 +13,10 @@ Related discovery:
 Base endpoint:
 - https://ridebt.org/index.php?option=com_ajax&module=bt_map&format=json&Itemid=101
 
+In endpoint examples below, `BASE_URL` refers to the base endpoint above.
+
 Method pattern:
-- Add method as a query parameter: &method=<methodName>
+- Add method as a query parameter: &method=METHOD_NAME
 - Some methods also require additional query params (for example patternName, stopCode, numOfTrips)
 
 Transport behavior in this app:
@@ -56,14 +58,13 @@ Implemented in API service but not currently called by hooks/screens:
 - None
 
 Implemented in API service and currently called by hooks/screens:
-- getNextDeparturesForStop (fallback path in route stop timetable hook)
+- getNextDeparturesForStop (route stop timetable flow + stop detail arrivals)
 
 Known and confirmed from probe artifacts, but not currently used at runtime:
 - getRoutes
 
 Not implemented yet in app service layer (placeholder logic only):
 - Stops endpoint (unknown)
-- Arrivals endpoint (unknown)
 - Calendar/service-level endpoint (unknown)
 
 ## Endpoints
@@ -71,7 +72,7 @@ Not implemented yet in app service layer (placeholder logic only):
 ### 1) getBuses
 
 URL:
-- <BASE>&method=getBuses
+- BASE_URL&method=getBuses
 
 Params:
 - None
@@ -125,7 +126,7 @@ Example probe file:
 ### 2) getRoutePatterns
 
 URL:
-- <BASE>&method=getRoutePatterns
+- BASE_URL&method=getRoutePatterns
 
 Params:
 - None
@@ -152,7 +153,7 @@ Example probe file:
 ### 3) getPatternPoints
 
 URL:
-- <BASE>&method=getPatternPoints&patternName=<patternName>
+- BASE_URL&method=getPatternPoints&patternName=PATTERN_NAME
 
 Params:
 - patternName: string (required)
@@ -186,7 +187,7 @@ Example probe files:
 ### 4) getActiveAlerts
 
 URL:
-- <BASE>&method=getActiveAlerts
+- BASE_URL&method=getActiveAlerts
 
 Params:
 - None
@@ -230,7 +231,7 @@ Example probe file:
 ### 5) getNextDeparturesForStop
 
 URL:
-- <BASE>&method=getNextDeparturesForStop&stopCode=<stopCode>&numOfTrips=<numOfTrips>
+- BASE_URL&method=getNextDeparturesForStop&stopCode=STOP_CODE&numOfTrips=NUM_OF_TRIPS
 - The routes-schedules page uses a related live endpoint at:
   - https://ridebt.org/index.php?option=com_ajax&module=bt_routes&method=getNextDeparturesForStop&format=json&Itemid=134
 
@@ -239,7 +240,7 @@ Params:
 - numOfTrips: number (optional in concept, app defaults to 3)
 
 Used by app:
-- Yes, as fallback path in route stop timetable flow
+- Yes (route stop timetable flow + stop detail arrivals)
 
 Raw data return type:
 - data: Array<Departure>
@@ -259,6 +260,17 @@ App-level return (BtDeparture):
 Probe notes:
 - GET requests to the com_ajax endpoint returned empty arrays in testing.
 - POST requests with form data returned populated next-departure JSON.
+- Confirmed live request shape from ridebt.org routes-schedules page JS:
+  - url:
+    https://ridebt.org/index.php?option=com_ajax&module=bt_routes&method=getNextDeparturesForStop&format=json&Itemid=134
+  - data payload:
+
+```json
+{
+  "stopCode": "STOP_CODE",
+  "numOfTrips": 3
+}
+```
 - This response is narrower than the trips page's embedded schedule JSON.
 - This endpoint does not include tripId or stop rank, so it cannot by itself fully align
   repeated-stop loops across concurrent buses.
@@ -272,7 +284,7 @@ Example probe files:
 ### 6) getRoutes
 
 URL:
-- <BASE>&method=getRoutes
+- BASE_URL&method=getRoutes
 
 Params:
 - None
@@ -299,14 +311,14 @@ Important fields in each route record:
 Example probe file:
 - testing/api_probe/getRoutes.json
 
-## Trips Page Embedded Schedule Data (routes-schedules?route=<route>&routeView=trips)
+## Trips Page Embedded Schedule Data (routes-schedules?route=ROUTE_SHORT_NAME&routeView=trips)
 
 Status:
 - Confirmed source of richer stop schedule data used by route stop timetable logic.
 - Parsed from embedded JS objects in the HTML, not from a dedicated standalone JSON endpoint.
 
 Relevant page URL pattern:
-- https://ridebt.org/index.php/routes-schedules?route=<routeShortName>&routeView=trips
+- https://ridebt.org/index.php/routes-schedules?route=ROUTE_SHORT_NAME&routeView=trips
 
 Confirmed embedded variables:
 - BUSES
@@ -348,7 +360,7 @@ New implementation notes:
 
 The probe file testing/api_probe/extra_method_probe.txt shows many guessed methods returning:
 - success: false
-- message: Method <Name>Ajax does not exist.
+- message: Method NAME_AJAX does not exist.
 
 Examples include:
 - getTrips
@@ -364,8 +376,10 @@ These are not available on the current RideBT bt_map AJAX module.
 
 The following app functions are placeholders and currently do not hit a backend endpoint:
 - fetchStops(): returns []
-- fetchArrivals(stopId): returns []
 - fetchServiceStatus() in btCalendar.ts: default full service, no remote parse yet
+
+Implemented (using confirmed backend endpoint):
+- fetchArrivals(stopId): maps getNextDeparturesForStop rows into BtArrival objects
 
 ## Quick Reference Table
 
@@ -375,15 +389,23 @@ The following app functions are placeholders and currently do not hit a backend 
 | getRoutePatterns | none | Yes | Array of route/pattern name pairs |
 | getPatternPoints | patternName (required) | Yes | Array of pattern points/stops |
 | getActiveAlerts | none | Yes | Array of active alert records |
-| getNextDeparturesForStop | stopCode (required), numOfTrips (optional/default 3) | Yes (fallback path) | Array of departures |
+| getNextDeparturesForStop | stopCode (required), numOfTrips (optional/default 3) | Yes (timetable + stop detail arrivals) | Array of departures |
 | getRoutes | none | No (known only) | Object keyed by route short name |
 | routes-schedules embedded JS | route (required), routeView=trips | Yes (primary for timetable alignment) | Objects including ROUTE_SCHEDULES_BY_STOP |
+
+## App Routing Notes (Stop Detail)
+
+- Stop detail now uses a path endpoint shape in the app router: /stops/[id]
+- Examples:
+  - /stops/1143
+  - /stops/1204
+- Legacy /stop/[id] links are bridged/redirected into the tabbed /stops/[id] route.
 
 ## Notes For Future API Work
 
 - If route metadata should become fully live, switch fetchRoutes() from static data to getRoutes.
 - A confirmed stops endpoint is still needed to replace derived stop lists from pattern points.
-- A confirmed arrivals/ETA endpoint is still needed to power stop detail arrivals in real time.
+- Stop detail currently uses scheduled departures (via bt_routes getNextDeparturesForStop), not true live ETA predictions.
 - Calendar/service-level integration is pending endpoint discovery or page scraping strategy.
 - If the app only needs next few departures, the direct bt_routes getNextDeparturesForStop endpoint is enough.
 - If the app needs full cycle-consistent stop timing (especially loop/repeated-stop routes),

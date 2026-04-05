@@ -434,10 +434,23 @@ export const fetchArrivals = async (stopId: string): Promise<BtArrival[]> => {
   }
 
   try {
-    // Stop arrivals endpoint is not yet confirmed for this feed.
-    // Return an empty list so callers can handle graceful loading.
-    void stopId;
-    return [];
+    const departures = await fetchNextDeparturesForStop(stopId, 10);
+
+    return departures
+      .map((departure): BtArrival | null => {
+        const timestampMs = Date.parse(departure.adjustedDepartureTime);
+        if (Number.isNaN(timestampMs)) return null;
+
+        return {
+          routeID: departure.routeShortName,
+          routeName: departure.patternName || departure.routeShortName,
+          stopID: stopId,
+          arrivalTime: Math.floor(timestampMs / 1000),
+          isScheduled: true,
+          isLive: false,
+        };
+      })
+      .filter((arrival): arrival is BtArrival => arrival !== null);
   } catch (error) {
     console.error(`Failed to fetch arrivals for stop ${stopId}:`, error);
     throw error;

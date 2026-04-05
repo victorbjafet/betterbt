@@ -1,51 +1,35 @@
 /**
- * Route Detail Screen
- * Shows route stops, live buses on route, and ETAs
+ * Route detail deep-link bridge.
+ * Phase 1 keeps route detail UX in the routes tab.
  */
 
+import { Redirect, useLocalSearchParams } from 'expo-router';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
-import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
-import { useTheme } from '@/hooks/useTheme';
+
+const normalizeParam = (value: string | string[] | undefined): string | null => {
+  if (Array.isArray(value)) {
+    const first = value[0]?.trim();
+    return first ? first : null;
+  }
+
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+};
 
 export default function RouteDetailScreen() {
-  const theme = useTheme();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id } = useLocalSearchParams<{ id?: string | string[] }>();
+  const routeId = normalizeParam(id);
+
+  if (!routeId) {
+    return <Redirect href="/(tabs)/routes" />;
+  }
 
   return (
-    <ScreenWrapper scrollable>
-      <View style={styles.container}>
-        <Text style={[styles.heading, { color: theme.TEXT }]}>Route Detail: {id}</Text>
-        <Text style={[styles.placeholder, { color: theme.TEXT_SECONDARY }]}>
-          TODO: Implement route detail view
-        </Text>
-        <Text style={[styles.details, { color: theme.TEXT_MUTED }]}>
-          - Route name and description{'\n'}
-          - List of stops served by this route{'\n'}
-          - Live buses currently on route{'\n'}
-          - This route on map view{'\n'}
-        </Text>
-      </View>
-    </ScreenWrapper>
+    <Redirect
+      href={{
+        pathname: '/(tabs)/routes',
+        params: { routeId },
+      }}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-  },
-  heading: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
-  placeholder: {
-    fontSize: 14,
-    marginBottom: 12,
-  },
-  details: {
-    fontSize: 12,
-    lineHeight: 20,
-  },
-});

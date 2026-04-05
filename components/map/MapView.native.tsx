@@ -35,6 +35,7 @@ export default function TransitMapView({
   focusedStop,
   onBusPress,
   onStopPress,
+  onStopInfoPress,
   onMapPress,
 }: TransitMapViewProps) {
   const SNAP_TO_REAL_POSITION_METERS = 28;
@@ -486,6 +487,10 @@ export default function TransitMapView({
                 500
               );
               onStopPress?.(stop);
+            }}
+            onCalloutPress={(event) => {
+              event.stopPropagation?.();
+              onStopInfoPress?.(stop);
             }}
           >
             <StopMarker stop={stop} />

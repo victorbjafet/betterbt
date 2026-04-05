@@ -12,19 +12,18 @@
 
 ### 1. Screen & Navigation Implementation
 
-#### Route Detail Screen
-- [ ] Implement full route detail screen (`app/route/[id].tsx`)
-  - [ ] Display route name, color-coded badge
-  - [ ] Show list of stops with upcoming arrival times
-  - [ ] Display live buses currently on route (animate their positions)
-  - [ ] Add link/button to view in map
-  - [ ] Wire navigation from routes tab to this screen
-  - **Tech**: React Query (`useRouteStops`), TanStack Query caching, route geometry from `useRouteGeometry`
+#### Route Detail Ownership (Consolidation)
+- [x] Designate routes tab (`app/(tabs)/routes.tsx`) as the canonical route-detail UX for Phase 1
+- [x] Convert `app/route/[id].tsx` into a deep-link bridge that forwards to routes tab with `routeId`
+- [ ] Later: extract shared route-detail module for a standalone stack screen (without duplicating logic)
+  - [ ] Reuse shared components/hooks between routes tab and stack route screen
+  - [ ] Revisit whether in-app taps should open standalone route detail vs. focus in-tab
+  - **Tech**: shared route-detail view model + presentational components
 
 #### Stop Detail Screen - Complete Implementation
 - [ ] The screen exists but `fetchArrivals()` currently returns empty
-  - [ ] **Discovery**: Find correct BT API endpoint for stop arrivals (via network inspection of ridebt.org)
-  - [ ] Once endpoint discovered, update `services/api/btApi.ts` → `fetchArrivals(stopId)`
+  - [x] **Discovery**: Found departures endpoint used by ridebt.org (`bt_routes:getNextDeparturesForStop`)
+  - [x] Updated `services/api/btApi.ts` → `fetchArrivals(stopId)` to map departures into arrivals
   - [ ] Normalize stop identifiers (`stopId` vs `stopCode`) across map stops and arrivals API
   - [ ] Add ETA countdown timer (minutes until arrival, "Now" if ≤0)
   - [ ] Show route color badges with route names
@@ -32,8 +31,8 @@
   - **Tech**: React Query with 20s refetch, `useStopArrivals` hook, `ArrivalRow` component
 
 #### Navigation Wiring
-- [ ] Make route chip / route list items tap to open route detail
-- [ ] Make stop list items tap to open stop detail
+- [ ] Decide and lock route tap behavior: in-tab focus (current) vs standalone detail screen (later)
+- [x] Make "See stop info" action open stop detail in Stops tab path endpoint (`/stops/[id]`)
 - [ ] Ensure back button / dismissal works correctly
 - **Tech**: `expo-router` dynamic routes `route/[id]` and `stop/[id]`
 
@@ -122,6 +121,33 @@
   - [x] Animate map camera to clicked stop with tighter zoom
   - **Files**: `components/map/MapView.native.tsx`, `components/map/MapView.web.tsx`, `app/(tabs)/routes.tsx`
 
+#### Mobile Zoom Controls & Responsive Map Scaling
+- [ ] Improve map usability on mobile with explicit zoom controls
+  - [ ] Add visible zoom-in and zoom-out buttons over map (native + web)
+  - [ ] Ensure controls are reachable with one-handed use and respect safe areas
+  - [ ] Add tap targets sized for mobile accessibility (minimum 44x44)
+  - [ ] Validate zoom interactions with clustered markers and selected bus/stop states
+  - **Files**: `components/map/MapView.native.tsx`, `components/map/MapView.web.tsx`, `app/(tabs)/routes.tsx`
+  - **Tech**: Camera/region delta updates, responsive control placement, touch target accessibility
+
+#### Bus Label Scale Standardization
+- [ ] Standardize bus label sizing to be proportional to the rest of map UI
+  - [ ] Remove hard-coded label shrinking behavior currently used for readability
+  - [ ] Define label sizing tokens relative to marker/base UI scale
+  - [ ] Use map zoom level as the primary way labels appear smaller/larger
+  - [ ] Verify readability at low zoom and overlap behavior at high bus density
+  - **Files**: `components/map/BusMarker.tsx`, `components/map/MapView.native.tsx`, `components/map/MapView.web.tsx`, `constants/theme.ts`
+  - **Tech**: Zoom-aware style interpolation, shared sizing constants, marker label layout tuning
+
+#### Automatic Zoom by Window Size
+- [ ] Auto-adjust default map zoom based on viewport/window dimensions
+  - [ ] Define breakpoints for phone portrait, phone landscape, tablet, desktop web
+  - [ ] Compute initial camera region/zoom from available map viewport
+  - [ ] Recompute on orientation and window resize without jarring recenter behavior
+  - [ ] Preserve user-selected zoom after manual interaction (do not fight user input)
+  - **Files**: `components/map/MapView.native.tsx`, `components/map/MapView.web.tsx`, `app/(tabs)/routes.tsx`
+  - **Tech**: window dimensions listeners, guarded auto-fit logic, first-load vs user-interaction state
+
 ---
 
 ### 5. Live Map vs. Routes Tab (Consolidation)
@@ -138,6 +164,15 @@
   - [x] Button to collapse/expand sidebar (like split-view toggle)
   - [x] Saves space on mobile, shows more map
   - **Tech**: State toggle + conditional rendering, responsive layout
+
+#### Full-Screen Map Control Discoverability
+- [ ] Make the full-screen map toggle more obvious and easier to discover
+  - [ ] Replace ambiguous icon/text with clearer label and affordance
+  - [ ] Improve contrast, spacing, and visual hierarchy over map background
+  - [ ] Add first-run hint/coachmark explaining full-screen mode
+  - [ ] Confirm placement does not conflict with zoom controls or stop/bus interactions
+  - **Files**: `app/(tabs)/routes.tsx`, `components/ui/*` (new/updated map action button)
+  - **Tech**: progressive disclosure, accessible color contrast, mobile-first control positioning
 
 #### iOS App Support & Stability
 - [ ] Add end-to-end iOS app support hardening
@@ -173,6 +208,15 @@
   - [ ] Intent: user selects stop → see all routes via that stop
   - [ ] Implementation: reverse map from stops → routes in data structure
   - **Data needed**: Relationship between stops and routes (from `useRouteStops` + `useStops`)
+
+#### Route & Stop Search
+- [ ] Add search feature for both routes and stops
+  - [ ] Add shared search input with mode toggle (Routes / Stops) or unified results list
+  - [ ] Support search by route name, short code, stop name, and stop ID/code
+  - [ ] Debounce input and highlight matching text in result rows
+  - [ ] Tapping a result should navigate directly to `route/[id]` or `stop/[id]`
+  - [ ] Persist recent searches for quick re-use and clear history option
+  - **Tech**: normalized searchable index, debounced query state, lightweight client-side ranking
 
 #### View Location on Map
 - [ ] Show user's current GPS position as blue dot on map
@@ -244,6 +288,50 @@
     - Stop timing point metadata (which stops are hard time checks)
     - Route timetable with dwell times + segment durations
   - **Tech**: Time delta calculation, ETA interpolation along route, historical aggregation
+
+#### Terminal Stop Time Anomaly Fixes
+- [ ] Fix inconsistent/looping time values at final stops in stop sequences
+  - [ ] Reproduce known cases (e.g., HWC Orange Bay 11 showing time rollback after later stop)
+  - [ ] Audit arrival ordering logic for terminal/loop routes where stop sequence wraps
+  - [ ] Prevent non-monotonic time display in a single trip progression unless service-day boundary is crossed
+  - [ ] Add route-specific guardrails/tests for cycle routes with repeated stop IDs
+  - **Files**: `services/api/btApi.ts`, `hooks/useRouteStopTimetable.ts`, `hooks/useStopArrivals.ts`, `components/ui/ArrivalRow.tsx`
+  - **Tech**: sequence index normalization, trip-instance grouping, time ordering validation
+
+#### Bus Cycle Quality Review & Optimization
+- [ ] Evaluate cycle definitions and remove/merge low-value or redundant cycles
+  - [ ] Audit cycle usefulness for routes with questionable patterns (e.g., TT Hospital Cycle, Hethwood Square/HWC)
+  - [ ] Compare cycle paths against live usage frequency and rider-facing clarity
+  - [ ] Consolidate or de-prioritize cycles that add UI noise without meaningful routing value
+  - [ ] Validate changes against map display, stop ordering, and schedule integrity
+  - **Files**: `services/api/routeScheduleHtml.ts`, `services/api/btApi.ts`, `types/transit.ts`, `constants/staticTransitData.ts`
+  - **Tech**: cycle scoring heuristics (usage + uniqueness), route pattern normalization, regression snapshots
+
+#### Live Data Freshness Indicator
+- [ ] Show clear "last updated" and "updating..." status for live data areas
+  - [ ] Add global timestamp for latest successful live fetch (buses, arrivals, alerts where relevant)
+  - [ ] Show "Updating..." while polling/refetch is active
+  - [ ] Show stale warning if last update exceeds threshold (e.g., >60s)
+  - [ ] Keep wording/source-specific ("Buses updated Xs ago", "Arrivals updating...")
+  - **Tech**: React Query `isFetching`/`dataUpdatedAt`, relative-time formatter, stale-state thresholds in config
+
+#### Bus "Current Stop" Accuracy Improvements
+- [ ] Improve reliability of the "bus current stop" detection and label text
+  - [ ] Refine nearest-stop matching using route geometry direction and stop sequence order
+  - [ ] Distinguish between "at stop" vs "approaching" vs "between stops" states
+  - [ ] Add confidence threshold to avoid flicker/jumping between adjacent stops
+  - [ ] Cross-check against ETA feed when available and prefer authoritative stop state
+  - **Files**: `services/map/busPrediction.ts`, `hooks/useBuses.ts`, `components/map/BusMarker.tsx`, `types/transit.ts`
+  - **Tech**: snapped position + heading validation, stop-distance thresholding, hysteresis for stable labels
+
+#### Always-Visible Bus Current Stop Text
+- [ ] Show "current stop" text for buses even when no bus is selected
+  - [ ] Render compact current-stop labels in default multi-bus map mode
+  - [ ] Keep selected-bus mode richer, but do not hide baseline labels for unselected buses
+  - [ ] Add collision/declutter strategy at dense zoom levels (priority by focused route or viewport center)
+  - [ ] Confirm performance remains smooth with 50+ buses on screen
+  - **Files**: `components/map/BusMarker.tsx`, `components/map/MapView.native.tsx`, `components/map/MapView.web.tsx`, `app/(tabs)/routes.tsx`
+  - **Tech**: adaptive label density, zoom-level label rules, memoized marker rendering
 
 ---
 
@@ -398,6 +486,36 @@
   - [x] Configure Twitter/X card tags (`twitter:card`, `twitter:title`, `twitter:description`, `twitter:image`)
   - [x] Validate embeds in common preview tools before launch
 
+#### App Logo & Visual Identity
+- [ ] Create official BetterBT app logo and export platform-ready variants
+  - [ ] Define logo system (app icon mark, wordmark, monochrome variant)
+  - [ ] Produce required outputs for iOS, Android, and web (including high-res source)
+  - [ ] Apply logo across app shell, splash/icon assets, and website header/footer
+  - [ ] Validate legibility in light/dark themes and small icon sizes
+  - **Tech**: Vector-first asset pipeline (SVG master), Expo app icon/splash integration, web asset optimization
+
+#### Website Footer: GitHub + Credits
+- [ ] Add persistent website footer with source link and project credits
+  - [ ] Add GitHub repository link with external-link affordance
+  - [ ] Add concise credits section (data provider, app creator/maintainers)
+  - [ ] Include copyright/year and optional license reference
+  - [ ] Verify footer responsiveness on mobile and desktop layouts
+  - **Files**: `app/+html.tsx`, `app/(tabs)/_layout.tsx` or shared layout component
+  - **Tech**: semantic footer markup, accessible links, responsive spacing
+
+#### Release Engineering (CI/CD + Versioning)
+- [ ] Define and document CI/CD strategy for web and app builds
+  - [ ] Evaluate GitHub Actions workflow for lint, typecheck, tests, and Expo build steps
+  - [ ] Add staging vs production deployment flow (branch/tag based)
+  - [ ] Document required secrets, environment variables, and rollback process
+  - [ ] Add release checklist aligned with this roadmap
+- [ ] Enforce version numbers for every release
+  - [ ] Adopt semantic versioning policy (`MAJOR.MINOR.PATCH`)
+  - [ ] Require version bump before release publish (app + website)
+  - [ ] Generate release notes from commits/issues and tag each release in GitHub
+  - [ ] Surface app version/build number in settings/about UI
+  - **Tech**: GitHub Actions, release tags, changelog automation, Expo version/build config
+
 ---
 
 ## Technical Debt & Future Refinement
@@ -431,6 +549,24 @@
 - [x] Error tracking (Sentry or similar)
   - [x] Added lightweight in-app error event logging hooks; full external sink integration remains optional.
 
+#### Self-Hosted Usage Telemetry
+- [ ] Add minimal, privacy-conscious telemetry to a locally hosted backend
+  - [ ] Track aggregate usage metrics only (active sessions, visit timestamps, basic platform)
+  - [ ] Build small local ingestion service endpoint for telemetry events
+  - [ ] Batch and retry events client-side; avoid blocking UI on network failures
+  - [ ] Add opt-out control in settings and document data collection policy in README
+  - [ ] Keep telemetry endpoint separate from BT APIs and disable in development by default
+  - **Files**: `services/telemetry.ts`, `store/settingsStore.ts`, `README.md`, backend folder (new)
+  - **Tech**: lightweight HTTP event ingestion, anonymized payload schema, retention limits
+
+#### README Refresh
+- [ ] Improve GitHub README quality and maintainability
+  - [ ] Rewrite top section with clear value proposition, screenshots/GIFs, and quick links
+  - [ ] Add concise local setup, run, and deploy instructions for iOS/Android/web
+  - [ ] Document current architecture (hooks, services, map components, store)
+  - [ ] Add roadmap/status snapshot that stays in sync with `TODO.md`
+  - [ ] Include contribution guidelines and issue/PR workflow expectations
+
 ---
 
 ## Summary Table (Priority)
@@ -445,10 +581,19 @@
 | **Phase 1 - Critical** | Settings screen + store usage | No | Medium | settingsStore actions |
 | **Phase 2 - Core** | Offline fallback | No | Large | Static timetable JSON |
 | **Phase 2 - Data** | Filter system | No | Medium | UI + state |
+| **Phase 2 - Data** | Route + stop search | No | Medium | Search index + navigation wiring |
 | **Phase 2 - Data** | View location on map | No | Small | Marker UI |
+| **Phase 2 - Data** | Terminal stop time anomaly fixes | Yes | Medium | Trip/stop sequence normalization |
+| **Phase 2 - Data** | Cycle quality review + optimization | No | Medium | Pattern usage analysis |
+| **Phase 2 - Data** | Bus current-stop accuracy + always-visible text | No | Medium | Stable stop inference + label density rules |
+| **Phase 1.5 - UX** | Mobile zoom controls + auto zoom | No | Medium | MapView camera control |
+| **Testing/Deployment** | CI/CD strategy + release versioning | No | Medium | Build/test scripts, secrets setup |
+| **Testing/Deployment** | App logo + website credits/footer | No | Small | Brand assets + shared layout |
+| **Tech Debt** | Self-hosted minimal telemetry | No | Medium | Local backend endpoint |
+| **Tech Debt** | README refresh | No | Small | Current feature inventory |
 | **Tech Debt** | Dead code cleanup | No | Small | Usage audit |
 | **Phase 3** | Trip planning | No | Large | Graph + routing |
 
 ---
 
-**Last Updated**: April 3, 2026
+**Last Updated**: April 5, 2026

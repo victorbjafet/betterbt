@@ -14,5 +14,6 @@ export interface TransitMapViewProps {
   focusedStop?: Stop | null;
   onBusPress?: (bus: Bus) => void;
   onStopPress?: (stop: Stop) => void;
+  onStopInfoPress?: (stop: Stop) => void;
   onMapPress?: () => void;
 }

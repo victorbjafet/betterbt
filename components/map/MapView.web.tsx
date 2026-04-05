@@ -48,6 +48,7 @@ export default function TransitMapView({
   focusedStop,
   onBusPress,
   onStopPress,
+  onStopInfoPress,
   onMapPress,
 }: TransitMapViewProps) {
   const SNAP_TO_REAL_POSITION_METERS = 28;
@@ -1038,16 +1039,19 @@ export default function TransitMapView({
                       <div className="betterbt-popup-value">none</div>
                     </div>
                   )}
-                  <button
-                    type="button"
-                    className="betterbt-stop-focus-button"
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                    }}
-                  >
-                    See stop info
-                  </button>
+                  {onStopInfoPress ? (
+                    <button
+                      type="button"
+                      className="betterbt-stop-focus-button"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        onStopInfoPress(stop);
+                      }}
+                    >
+                      See stop info
+                    </button>
+                  ) : null}
                 </div>
               </Tooltip>
             ) : null}

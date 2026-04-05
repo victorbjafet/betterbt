@@ -18,6 +18,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { trackEvent } from '@/services/telemetry';
 import { Bus, Stop } from '@/types/transit';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, LayoutChangeEvent, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
@@ -92,6 +93,16 @@ const formatClockTime = (isoDateString: string): string => {
 
 const normalizePatternKey = (value: string): string => value.trim().toLowerCase();
 
+const normalizeRouteParam = (value: string | string[] | undefined): string | null => {
+  if (Array.isArray(value)) {
+    const first = value[0]?.trim();
+    return first ? first : null;
+  }
+
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+};
+
 const readPersistedFavoriteRouteIds = async (): Promise<string[]> => {
   try {
     if (Platform.OS === 'web') {
@@ -133,6 +144,8 @@ const writePersistedFavoriteRouteIds = async (favoriteRouteIds: string[]): Promi
 
 export default function RoutesScreen() {
   const theme = useTheme();
+  const router = useRouter();
+  const { routeId: routeIdParam } = useLocalSearchParams<{ routeId?: string | string[] }>();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { data: buses = [], isLoading: isBusesLoading, isError: isBusesError } = useBusPositions();
@@ -158,6 +171,8 @@ export default function RoutesScreen() {
   const hasHydratedFavoritesRef = useRef(false);
   const lastTrackedRouteIdRef = useRef<string | null>(null);
   const lastTrackedFavoriteCountRef = useRef<number>(0);
+  const lastAppliedRouteParamRef = useRef<string | null>(null);
+  const pendingRouteId = useMemo(() => normalizeRouteParam(routeIdParam), [routeIdParam]);
 
   const isWideLayout = width >= 900;
   const isPortrait = height >= width;
@@ -203,6 +218,30 @@ export default function RoutesScreen() {
     () => routes.find((route) => route.id === selectedRouteId),
     [routes, selectedRouteId]
   );
+
+  useEffect(() => {
+    if (!pendingRouteId) {
+      lastAppliedRouteParamRef.current = null;
+      return;
+    }
+
+    if (lastAppliedRouteParamRef.current === pendingRouteId) {
+      return;
+    }
+
+    const routeExists = routes.some((route) => route.id === pendingRouteId);
+    if (!routeExists) {
+      return;
+    }
+
+    lastAppliedRouteParamRef.current = pendingRouteId;
+    setFavoritesViewEnabled(false);
+    setFocusedStopId(null);
+    setFocusedStopSource(null);
+    setFocusedBusId(null);
+    setSelectedCycleId(null);
+    setSelectedRouteId(pendingRouteId);
+  }, [pendingRouteId, routes]);
 
   const favoriteRouteSet = useMemo(() => new Set(favoriteRouteIds), [favoriteRouteIds]);
   const hasFavorites = favoriteRouteIds.length > 0;
@@ -790,6 +829,16 @@ export default function RoutesScreen() {
     setFocusedStopSource('list');
   };
 
+  const openStopDetail = useCallback((rawStopId: string) => {
+    const stopId = rawStopId.trim();
+    if (!stopId) return;
+
+    router.push({
+      pathname: '/(tabs)/stops/[id]',
+      params: { id: stopId },
+    });
+  }, [router]);
+
   const focusStopFromMap = (stopId: string) => {
     setFocusedBusId(null);
     setFocusedStopId(stopId);
@@ -932,6 +981,7 @@ export default function RoutesScreen() {
                           <Pressable
                             onPress={(event) => {
                               event.stopPropagation();
+                              openStopDetail(row.stopCode);
                             }}
                             style={[styles.stopInfoButton, { borderColor: theme.BORDER, backgroundColor: theme.SURFACE }]}
                           >
@@ -1164,6 +1214,7 @@ export default function RoutesScreen() {
                       focusedStop={focusedStopForMap}
                       onBusPress={handleMapBusPress}
                       onStopPress={(stop: Stop) => focusStopFromMap(stop.code?.trim() || stop.id)}
+                      onStopInfoPress={(stop: Stop) => openStopDetail(stop.code?.trim() || stop.id)}
                       onMapPress={() => {
                         setFocusedBusId(null);
                         setFocusedStopId(null);
@@ -1276,6 +1327,7 @@ export default function RoutesScreen() {
                       focusedStop={focusedStopForMap}
                       onBusPress={handleMapBusPress}
                       onStopPress={(stop: Stop) => focusStopFromMap(stop.code?.trim() || stop.id)}
+                      onStopInfoPress={(stop: Stop) => openStopDetail(stop.code?.trim() || stop.id)}
                       onMapPress={() => {
                         setFocusedBusId(null);
                         setFocusedStopId(null);

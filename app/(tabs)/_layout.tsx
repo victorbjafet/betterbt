@@ -82,6 +82,17 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="stops"
+        options={{
+          title: 'Stops',
+          tabBarLabel: 'Stops',
+          headerTitle: 'Stops',
+          tabBarIcon: ({ color }) => (
+            <MaterialCommunityIcons name="map-marker" size={28} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="alerts"
         options={{
           title: 'Alerts',
