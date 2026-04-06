@@ -16,6 +16,7 @@ import { useRouteStops } from '@/hooks/useRouteStops';
 import { useRouteStopTimetable } from '@/hooks/useRouteStopTimetable';
 import { useTheme } from '@/hooks/useTheme';
 import { trackEvent } from '@/services/telemetry';
+import { useSelectedStopStore } from '@/store/selectedStopStore';
 import { Bus, Stop } from '@/types/transit';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -145,6 +146,8 @@ const writePersistedFavoriteRouteIds = async (favoriteRouteIds: string[]): Promi
 export default function RoutesScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const selectedStopId = useSelectedStopStore((state) => state.selectedStopId);
+  const setSelectedStopId = useSelectedStopStore((state) => state.setSelectedStopId);
   const { routeId: routeIdParam } = useLocalSearchParams<{ routeId?: string | string[] }>();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -365,6 +368,32 @@ export default function RoutesScreen() {
       setSelectedCycleId(selectedRouteCycles[0].id);
     }
   }, [selectedCycleId, selectedRouteCycles, selectedRouteId]);
+
+  useEffect(() => {
+    if (!selectedStopId) return;
+    if (!selectedRouteId) return;
+    if (selectedRouteStops.length === 0) return;
+
+    const normalizedSelectedStopId = selectedStopId.trim();
+    if (!normalizedSelectedStopId) return;
+
+    const matchingStop = selectedRouteStops.find((stop) => {
+      const stopId = stop.id?.trim();
+      const stopCode = stop.code?.trim();
+      return stopId === normalizedSelectedStopId || stopCode === normalizedSelectedStopId;
+    });
+
+    if (!matchingStop) return;
+
+    const focusStopId = matchingStop.code?.trim() || matchingStop.id;
+    if (!focusStopId) return;
+
+    if (focusedStopId !== focusStopId || focusedStopSource !== 'list') {
+      setFocusedBusId(null);
+      setFocusedStopId(focusStopId);
+      setFocusedStopSource('list');
+    }
+  }, [focusedStopId, focusedStopSource, selectedRouteId, selectedRouteStops, selectedStopId]);
 
   const focusedBus = useMemo(
     () => displayedBuses.find((bus) => bus.id === focusedBusId) ?? null,
@@ -833,11 +862,12 @@ export default function RoutesScreen() {
     const stopId = rawStopId.trim();
     if (!stopId) return;
 
+    setSelectedStopId(stopId);
+
     router.push({
-      pathname: '/(tabs)/stops/[id]',
-      params: { id: stopId },
+      pathname: '/(tabs)/stops',
     });
-  }, [router]);
+  }, [router, setSelectedStopId]);
 
   const focusStopFromMap = (stopId: string) => {
     setFocusedBusId(null);

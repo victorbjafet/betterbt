@@ -36,6 +36,14 @@
 - [ ] Ensure back button / dismissal works correctly
 - **Tech**: `expo-router` dynamic routes `route/[id]` and `stop/[id]`
 
+#### Background Route/Stop Preloading
+- [ ] Placeholder stage: background route/stop cache warming is implemented but not reliably working yet
+  - [ ] Counter should increase without manual page opens
+  - [ ] Prefetch queue should continue while foreground queries are idle
+  - [ ] Keep foreground-visible requests (live buses, active screen data) higher priority than background tasks
+  - [ ] When user taps a route from a stop, Routes tab should auto-select and scroll to that same stop in the route stop list after route data loads
+  - **Tech**: TanStack Query prefetch scheduler + shared cache progress state
+
 ---
 
 ### 2. Data Persistence & Settings
@@ -60,6 +68,11 @@
   - [ ] Theme mode selector (`light` / `dark` / `auto`)
   - [ ] Map type selector (`map` / `satellite` / `hybrid`) where supported
   - [ ] Notifications preference toggle
+  - [ ] Add "Refresh interval" control above page zoom: slider + textbox (matching zoom control UI)
+  - [ ] Constrain refresh interval setting to 3-10 seconds
+  - [ ] Wire refresh interval setting into runtime fetch behavior (override default refresh constants)
+  - [ ] Add persistent settings cache (survives reloads) for settings values including refresh interval
+  - [ ] Ensure settings back button falls back to Routes tab when no previous route/tab exists
   - [ ] Replace remaining local state in feature screens with store-backed state where applicable
 
 ---

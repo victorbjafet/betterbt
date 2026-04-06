@@ -32,5 +32,6 @@ export function useStopArrivals(stopId: string) {
     refetchIntervalInBackground: false,
     staleTime: STALE_TIMES.ARRIVALS,
     retry: 2,
+    meta: { priority: 'high' },
   });
 }

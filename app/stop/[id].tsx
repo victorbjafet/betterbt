@@ -3,8 +3,9 @@
  * Stops details live in the Stops tab for Phase 1.
  */
 
-import { Redirect, useLocalSearchParams } from 'expo-router';
-import React from 'react';
+import { useSelectedStopStore } from '@/store/selectedStopStore';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect } from 'react';
 
 const normalizeParam = (value: string | string[] | undefined): string | null => {
   if (Array.isArray(value)) {
@@ -17,19 +18,18 @@ const normalizeParam = (value: string | string[] | undefined): string | null => 
 };
 
 export default function StopDetailScreen() {
+  const router = useRouter();
+  const setSelectedStopId = useSelectedStopStore((state) => state.setSelectedStopId);
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const stopId = normalizeParam(id);
 
-  if (!stopId) {
-    return <Redirect href="/(tabs)/stops" />;
-  }
+  useEffect(() => {
+    if (stopId) {
+      setSelectedStopId(stopId);
+    }
 
-  return (
-    <Redirect
-      href={{
-        pathname: '/(tabs)/stops/[id]',
-        params: { id: stopId },
-      }}
-    />
-  );
+    router.replace('/(tabs)/stops');
+  }, [router, setSelectedStopId, stopId]);
+
+  return null;
 }

@@ -400,7 +400,6 @@ export default function TransitMapView({
 
           const coordinate = event.nativeEvent.coordinate;
           if (
-            selectedRouteId &&
             coordinate &&
             selectNearestStopFromPoint(coordinate.latitude, coordinate.longitude)
           ) {

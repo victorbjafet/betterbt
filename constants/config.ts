@@ -12,6 +12,10 @@ export const API_ENDPOINTS = {
   BT_WEBSITE: 'https://ridebt.org',
 };
 
+export const APP_VERSION_DATE = '2026.04.06';
+export const APP_RELEASE_CHANNEL = 'alpha';
+export const APP_VERSION_LABEL = `(${APP_RELEASE_CHANNEL}) ${APP_VERSION_DATE}`;
+
 // Data refresh intervals (in milliseconds)
 export const REFRESH_INTERVALS = {
   VEHICLES: 5_000,         // Bus positions: 5 seconds

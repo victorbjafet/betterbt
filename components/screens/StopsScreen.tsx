@@ -8,26 +8,17 @@ import { MapErrorBoundary } from '@/components/map/MapErrorBoundary';
 import MapView from '@/components/map/MapView';
 import { ArrivalRow } from '@/components/ui/ArrivalRow';
 import { InlineErrorState } from '@/components/ui/InlineErrorState';
+import { RouteChip } from '@/components/ui/RouteChip';
+import { useRoutes } from '@/hooks/useRoutes';
 import { useStopArrivals } from '@/hooks/useStopArrivals';
 import { useStops } from '@/hooks/useStops';
 import { useTheme } from '@/hooks/useTheme';
+import { useSelectedStopStore } from '@/store/selectedStopStore';
 import { Stop } from '@/types/transit';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const STOP_ROW_HEIGHT = 58;
-
-const normalizeParam = (value: string | string[] | undefined): string | null => {
-  if (Array.isArray(value)) {
-    const first = value[0]?.trim();
-    return first ? first : null;
-  }
-
-  const trimmed = value?.trim();
-  return trimmed ? trimmed : null;
-};
 
 const formatClockTime = (date: Date): string => {
   if (Number.isNaN(date.getTime())) return '--';
@@ -41,19 +32,24 @@ const formatClockTime = (date: Date): string => {
 export default function StopsScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id?: string | string[] }>();
-  const routeStopId = useMemo(() => normalizeParam(id), [id]);
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const isWideLayout = width >= 900;
   const stopsListRef = useRef<FlatList<Stop> | null>(null);
+  const pendingScrollIndexRef = useRef<number | null>(null);
+  const selectedStopId = useSelectedStopStore((state) => state.selectedStopId);
+  const setSelectedStopId = useSelectedStopStore((state) => state.setSelectedStopId);
+  const clearSelectedStop = useSelectedStopStore((state) => state.clearSelectedStop);
 
   const { data: stops = [], isLoading: isStopsLoading, error: stopsError } = useStops();
-  const [selectedStopId, setSelectedStopId] = useState<string | null>(routeStopId);
+  const { data: routes = [] } = useRoutes();
 
-  useEffect(() => {
-    setSelectedStopId(routeStopId);
-  }, [routeStopId]);
+  const routeShortNameById = useMemo(() => {
+    return routes.reduce<Record<string, string>>((acc, route) => {
+      acc[route.id] = route.shortName;
+      return acc;
+    }, {});
+  }, [routes]);
 
   const selectedStop = useMemo(() => {
     if (!selectedStopId) return null;
@@ -86,6 +82,24 @@ export default function StopsScreen() {
     });
   }, [selectedStopIndex]);
 
+  const handleScrollToIndexFailed = useCallback(({ index }: { index: number }) => {
+    if (!stopsListRef.current) return;
+
+    pendingScrollIndexRef.current = index;
+
+    // Wait for the list to measure additional rows, then retry using real layout data.
+    setTimeout(() => {
+      if (!stopsListRef.current) return;
+      if (pendingScrollIndexRef.current !== index) return;
+
+      stopsListRef.current.scrollToIndex({
+        index,
+        animated: true,
+        viewPosition: 0.24,
+      });
+    }, 80);
+  }, []);
+
   const stopIdForArrivals = selectedStop?.code?.trim() || selectedStop?.id || '';
   const {
     data: arrivals = [],
@@ -112,11 +126,20 @@ export default function StopsScreen() {
     if (!stopId) return;
 
     setSelectedStopId(stopId);
-    router.replace({
-      pathname: '/(tabs)/stops/[id]',
-      params: { id: stopId },
+  }, [setSelectedStopId]);
+
+  const openRouteForStop = useCallback((routeId: string) => {
+    if (!selectedStop) return;
+
+    const stopId = selectedStop.code?.trim() || selectedStop.id;
+    if (!stopId) return;
+
+    setSelectedStopId(stopId);
+    router.push({
+      pathname: '/(tabs)/routes',
+      params: { routeId },
     });
-  }, [router]);
+  }, [router, selectedStop, setSelectedStopId]);
 
   const renderStopItem = useCallback(({ item }: { item: Stop }) => {
     const itemStopId = item.code?.trim() || item.id;
@@ -174,18 +197,7 @@ export default function StopsScreen() {
             data={stops}
             keyExtractor={(item) => item.id}
             renderItem={renderStopItem}
-            getItemLayout={(_, index) => ({
-              length: STOP_ROW_HEIGHT,
-              offset: STOP_ROW_HEIGHT * index,
-              index,
-            })}
-            onScrollToIndexFailed={({ index }) => {
-              const fallbackOffset = Math.max(0, STOP_ROW_HEIGHT * index);
-              stopsListRef.current?.scrollToOffset({
-                offset: fallbackOffset,
-                animated: true,
-              });
-            }}
+            onScrollToIndexFailed={handleScrollToIndexFailed}
             initialNumToRender={Math.max(40, stops.length)}
             maxToRenderPerBatch={Math.max(40, stops.length)}
             windowSize={21}
@@ -207,6 +219,7 @@ export default function StopsScreen() {
                 stopDeparturesById={stopDeparturesById}
                 focusedStop={selectedStop}
                 onStopPress={(stop: Stop) => selectStop(stop.id)}
+                onMapPress={clearSelectedStop}
               />
             </MapErrorBoundary>
           </View>
@@ -217,6 +230,26 @@ export default function StopsScreen() {
                 {selectedStop ? `Departures • ${selectedStop.code?.trim() || selectedStop.id}` : 'Departures'}
               </Text>
               <Text style={[styles.panelSubtitle, { color: theme.TEXT_SECONDARY }]}>Upcoming departures for the selected stop</Text>
+              {selectedStop && selectedStop.routes.length > 0 ? (
+                <View style={styles.routesForStopSection}>
+                  <Text style={[styles.routesForStopLabel, { color: theme.TEXT_SECONDARY }]}>Routes at this stop</Text>
+                  <View style={styles.routesForStopWrap}>
+                    {selectedStop.routes.map((routeId) => {
+                      const routeName = routeShortNameById[routeId] || routeId;
+
+                      return (
+                        <Pressable
+                          key={`${selectedStop.id}-${routeId}`}
+                          onPress={() => openRouteForStop(routeId)}
+                          style={styles.routeButtonPressable}
+                        >
+                          <RouteChip routeName={routeName} size="small" />
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+              ) : null}
             </View>
 
             {!selectedStop ? (
@@ -304,6 +337,22 @@ const styles = StyleSheet.create({
   panelSubtitle: {
     marginTop: 2,
     fontSize: 12,
+  },
+  routesForStopSection: {
+    marginTop: 8,
+    gap: 6,
+  },
+  routesForStopLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  routesForStopWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  routeButtonPressable: {
+    borderRadius: 999,
   },
   stopItem: {
     borderBottomWidth: 1,

@@ -46,6 +46,7 @@ export function useBuses() {
     refetchIntervalInBackground: false,
     staleTime: STALE_TIMES.VEHICLES,
     retry: 1,
+    meta: { priority: 'high' },
   });
 }
 

@@ -719,7 +719,7 @@ export default function TransitMapView({
         }
 
         const latlng = event?.latlng;
-        if (selectedRouteId && latlng && selectNearestStopFromPoint(latlng.lat, latlng.lng)) {
+        if (latlng && selectNearestStopFromPoint(latlng.lat, latlng.lng)) {
           return;
         }
 

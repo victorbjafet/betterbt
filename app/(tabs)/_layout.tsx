@@ -3,6 +3,7 @@ import { Tabs, useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { TransitCacheStatus } from '@/components/ui/TransitCacheStatus';
 import { useAlerts } from '@/hooks/useAlerts';
 import { useTheme } from '@/hooks/useTheme';
 
@@ -36,6 +37,22 @@ export default function TabsLayout() {
           fontWeight: 'bold',
         },
         headerTintColor: theme.TEXT,
+        headerRightContainerStyle: {
+          paddingRight: 10,
+        },
+        headerRight: () => (
+          <View style={styles.headerRightRow}>
+            <TransitCacheStatus />
+            <Pressable
+              onPress={() => router.push('/settings')}
+              accessibilityRole="button"
+              accessibilityLabel="Open settings"
+              style={[styles.headerSettingsButton, { borderColor: theme.BORDER, backgroundColor: theme.SURFACE }]}
+            >
+              <MaterialCommunityIcons name="cog-outline" size={14} color={theme.TEXT_SECONDARY} />
+            </Pressable>
+          </View>
+        ),
       }}
     >
       <Tabs.Screen
@@ -82,7 +99,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="stops"
+        name="stops/index"
         options={{
           title: 'Stops',
           tabBarLabel: 'Stops',
@@ -128,5 +145,18 @@ const styles = StyleSheet.create({
   headerAlertText: {
     fontSize: 12,
     fontWeight: '800',
+  },
+  headerRightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerSettingsButton: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
