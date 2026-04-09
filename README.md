@@ -1,4 +1,6 @@
-# BetterBT
+# [BetterBT](https://betterbt.vbjfr.xyz)
+
+This project is live at betterbt.vbjfr.xyz
 
 BetterBT is a real-time bus tracking app for Blacksburg Transit (BT).
 
