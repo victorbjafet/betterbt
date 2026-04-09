@@ -12,7 +12,7 @@ export const API_ENDPOINTS = {
   BT_WEBSITE: 'https://ridebt.org',
 };
 
-export const APP_VERSION_DATE = '2026.04.06';
+export const APP_VERSION_DATE = '2026.04.09';
 export const APP_RELEASE_CHANNEL = 'alpha';
 export const APP_VERSION_LABEL = `(${APP_RELEASE_CHANNEL}) ${APP_VERSION_DATE}`;
 

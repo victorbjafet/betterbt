@@ -4,7 +4,6 @@
  */
 
 import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
-import { AlertBanner } from '@/components/ui/AlertBanner';
 import { InlineErrorState } from '@/components/ui/InlineErrorState';
 import { useAlerts } from '@/hooks/useAlerts';
 import { useTheme } from '@/hooks/useTheme';
@@ -25,7 +24,6 @@ export default function AlertsScreen() {
     warning:  { bg: alertBg.warning,  border: theme.WARNING },
     critical: { bg: alertBg.critical, border: theme.ERROR },
   };
-  const featuredAlert = alerts.find((alert) => alert.severity === 'critical') ?? alerts[0] ?? null;
 
   if (isLoading) {
     return (
@@ -55,7 +53,6 @@ export default function AlertsScreen() {
 
   return (
     <ScreenWrapper scrollable>
-      {featuredAlert ? <AlertBanner alert={featuredAlert} /> : null}
       <FlatList
         data={alerts}
         keyExtractor={(item) => item.id}

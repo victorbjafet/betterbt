@@ -25,7 +25,7 @@ export default function StopDetailScreen() {
 
   useEffect(() => {
     if (stopId) {
-      setSelectedStopId(stopId);
+      setSelectedStopId(stopId, 'routes-to-stops-handoff');
     }
 
     router.replace('/(tabs)/stops');

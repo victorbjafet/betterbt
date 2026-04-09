@@ -56,7 +56,6 @@ export default function TransitMapView({
   const lastMarkerPressAtRef = useRef(0);
   const [isMapReady, setIsMapReady] = useState(false);
   const [displayBuses, setDisplayBuses] = useState<Bus[]>(buses);
-  const [visibleLatitudeDelta, setVisibleLatitudeDelta] = useState(INITIAL_REGION.latitudeDelta);
   const lastAutoFocusedRouteKey = useRef<string | null>(null);
   const didAutoFitAllBuses = useRef(false);
   const lastFollowAtMs = useRef(0);
@@ -188,11 +187,7 @@ export default function TransitMapView({
         : stops,
     [selectedRouteId, stops]
   );
-  const visibleStops = useMemo(() => {
-    if (visibleLatitudeDelta > 0.2) return [];
-    if (visibleLatitudeDelta > 0.1) return filteredStops.slice(0, 220);
-    return filteredStops;
-  }, [filteredStops, visibleLatitudeDelta]);
+  const visibleStops = filteredStops;
 
   const selectNearestStopFromPoint = (latitude: number, longitude: number) => {
     if (filteredStops.length === 0) return false;
@@ -330,8 +325,11 @@ export default function TransitMapView({
     if (lastHandledResetToken.current === resetViewToken) return;
 
     const allBusCoordinates = filteredBuses.map((bus) => ({ latitude: bus.latitude, longitude: bus.longitude }));
+    const allStopCoordinates = filteredStops.map((stop) => ({ latitude: stop.latitude, longitude: stop.longitude }));
     if (allBusCoordinates.length > 0) {
       fitToBusCoordinates(allBusCoordinates);
+    } else if (allStopCoordinates.length > 0) {
+      fitToBusCoordinates(allStopCoordinates);
     } else {
       mapRef.current?.animateToRegion(INITIAL_REGION, 550);
     }
@@ -341,7 +339,7 @@ export default function TransitMapView({
     lastFollowAtMs.current = 0;
     lastHandledFocusedStopId.current = null;
     lastHandledResetToken.current = resetViewToken;
-  }, [filteredBuses, isMapReady, resetViewToken]);
+  }, [filteredBuses, filteredStops, isMapReady, resetViewToken]);
 
   useEffect(() => {
     if (!isMapReady) return;
@@ -361,6 +359,16 @@ export default function TransitMapView({
         650
       );
       markerRefs.current[focusedDisplayBus.id]?.showCallout?.();
+    } else if (focusedStop) {
+      mapRef.current?.animateToRegion(
+        {
+          latitude: focusedStop.latitude,
+          longitude: focusedStop.longitude,
+          latitudeDelta: 0.008,
+          longitudeDelta: 0.008,
+        },
+        500
+      );
     } else if (selectedRouteId) {
       const routeCoordinates = routePaths.flatMap((path) => path.coordinates);
       const busCoordinates = filteredBuses.map((bus) => ({ latitude: bus.latitude, longitude: bus.longitude }));
@@ -371,15 +379,18 @@ export default function TransitMapView({
       }
     } else {
       const allBusCoordinates = filteredBuses.map((bus) => ({ latitude: bus.latitude, longitude: bus.longitude }));
+      const allStopCoordinates = filteredStops.map((stop) => ({ latitude: stop.latitude, longitude: stop.longitude }));
       if (allBusCoordinates.length > 0) {
         fitToBusCoordinates(allBusCoordinates);
+      } else if (allStopCoordinates.length > 0) {
+        fitToBusCoordinates(allStopCoordinates);
       } else {
         mapRef.current?.animateToRegion(INITIAL_REGION, 550);
       }
     }
 
     lastHandledViewportToken.current = viewportToken;
-  }, [filteredBuses, focusedDisplayBus, fullscreenViewToken, isMapReady, layoutVersion, routePaths, selectedRouteId]);
+  }, [filteredBuses, filteredStops, focusedDisplayBus, focusedStop, fullscreenViewToken, isMapReady, layoutVersion, routePaths, selectedRouteId]);
 
   return (
     <View style={styles.container}>
@@ -388,9 +399,6 @@ export default function TransitMapView({
         style={styles.map}
         initialRegion={INITIAL_REGION}
         onMapReady={() => setIsMapReady(true)}
-        onRegionChangeComplete={(region) => {
-          setVisibleLatitudeDelta(region.latitudeDelta);
-        }}
         onPress={(event) => {
           const elapsedSinceMarkerPress = Date.now() - lastMarkerPressAtRef.current;
           if (elapsedSinceMarkerPress < 300) return;

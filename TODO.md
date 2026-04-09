@@ -14,26 +14,31 @@
 
 #### Route Detail Ownership (Consolidation)
 - [x] Designate routes tab (`app/(tabs)/routes.tsx`) as the canonical route-detail UX for Phase 1
-- [x] Convert `app/route/[id].tsx` into a deep-link bridge that forwards to routes tab with `routeId`
+- [x] Convert `app/route/[id].tsx` into a deep-link bridge that forwards to routes tab (clean `/routes` URL with in-memory route selection handoff)
 - [ ] Later: extract shared route-detail module for a standalone stack screen (without duplicating logic)
   - [ ] Reuse shared components/hooks between routes tab and stack route screen
   - [ ] Revisit whether in-app taps should open standalone route detail vs. focus in-tab
   - **Tech**: shared route-detail view model + presentational components
 
 #### Stop Detail Screen - Complete Implementation
-- [ ] The screen exists but `fetchArrivals()` currently returns empty
+- [x] Wire stop-detail arrivals to RideBT departures endpoint (`fetchArrivals(stopId)` no longer returns empty by default)
   - [x] **Discovery**: Found departures endpoint used by ridebt.org (`bt_routes:getNextDeparturesForStop`)
   - [x] Updated `services/api/btApi.ts` → `fetchArrivals(stopId)` to map departures into arrivals
   - [ ] Normalize stop identifiers (`stopId` vs `stopCode`) across map stops and arrivals API
-  - [ ] Add ETA countdown timer (minutes until arrival, "Now" if ≤0)
-  - [ ] Show route color badges with route names
-  - [ ] Color-code by source: "Live" (green) vs "Scheduled" (gray)
+  - [ ] Add true live-vs-scheduled status for stop departures (badge should switch to Live when backed by real-time data)
+  - [x] Add ETA countdown timer (minutes until arrival, "Now" if ≤0)
+  - [x] Show route color badges with route names
+  - [x] Color-code by source: "Live" (green) vs "Scheduled" (gray)
   - **Tech**: React Query with 20s refetch, `useStopArrivals` hook, `ArrivalRow` component
 
 #### Navigation Wiring
 - [ ] Decide and lock route tap behavior: in-tab focus (current) vs standalone detail screen (later)
-- [x] Make "See stop info" action open stop detail in Stops tab path endpoint (`/stops/[id]`)
+- [x] Make "See stop info" action open stop detail in Stops tab path endpoint (`/stops`)
+- [x] Remove `?routeId=` query-string navigation and keep stop → routes transitions on clean `/routes` URL
+- [ ] On Stops → Routes handoff, auto-select the cycle that contains the originating stop (minor, tedious, low priority)
+- [ ] Add a manual full-app refresh button that forces a complete page/app data refresh (consider placing it next to the header item count)
 - [ ] Ensure back button / dismissal works correctly
+- [x] Show the alerts header label/pill at the top of Stops tab the same way it appears on Routes tab
 - **Tech**: `expo-router` dynamic routes `route/[id]` and `stop/[id]`
 
 #### Background Route/Stop Preloading
@@ -41,7 +46,8 @@
   - [ ] Counter should increase without manual page opens
   - [ ] Prefetch queue should continue while foreground queries are idle
   - [ ] Keep foreground-visible requests (live buses, active screen data) higher priority than background tasks
-  - [ ] When user taps a route from a stop, Routes tab should auto-select and scroll to that same stop in the route stop list after route data loads
+  - [x] When user taps a route from a stop, Routes tab auto-selects the route and preserves stop context without relying on URL query params
+  - [ ] Fix broken stop deselect behavior after jumping from Stops tab into Routes tab (clicking off the stop should clear selection)
   - **Tech**: TanStack Query prefetch scheduler + shared cache progress state
 
 ---
@@ -64,7 +70,8 @@
   - **Tech**: Custom calendar scraper or API parser, React Query caching
 
 #### Settings Screen & Store Usage
-- [ ] Add a settings screen and expose user preferences already in `settingsStore`
+- [x] Add a settings screen (route, navigation entry, version display, and support actions)
+- [ ] Expose user preferences already in `settingsStore`
   - [ ] Theme mode selector (`light` / `dark` / `auto`)
   - [ ] Map type selector (`map` / `satellite` / `hybrid`) where supported
   - [ ] Notifications preference toggle
@@ -72,7 +79,7 @@
   - [ ] Constrain refresh interval setting to 3-10 seconds
   - [ ] Wire refresh interval setting into runtime fetch behavior (override default refresh constants)
   - [ ] Add persistent settings cache (survives reloads) for settings values including refresh interval
-  - [ ] Ensure settings back button falls back to Routes tab when no previous route/tab exists
+  - [x] Ensure settings back button falls back to Routes tab when no previous route/tab exists
   - [ ] Replace remaining local state in feature screens with store-backed state where applicable
 
 ---
@@ -132,6 +139,8 @@
   - [x] Wire stop marker click handler to set selected stop state
   - [x] Scroll/focus matching stop row in stops list UI
   - [x] Animate map camera to clicked stop with tighter zoom
+  - [ ] Consider switching stop-hit selection radius to screen-space/absolute size relative to viewport (instead of map-distance radius)
+  - [ ] Feature consideration: show live buses on Stops tab map (not just stops/departures overlays)
   - **Files**: `components/map/MapView.native.tsx`, `components/map/MapView.web.tsx`, `app/(tabs)/routes.tsx`
 
 #### Mobile Zoom Controls & Responsive Map Scaling
@@ -149,7 +158,7 @@
   - [ ] Define label sizing tokens relative to marker/base UI scale
   - [ ] Use map zoom level as the primary way labels appear smaller/larger
   - [ ] Verify readability at low zoom and overlap behavior at high bus density
-  - **Files**: `components/map/BusMarker.tsx`, `components/map/MapView.native.tsx`, `components/map/MapView.web.tsx`, `constants/theme.ts`
+  - **Files**: `components/map/BusMarker.tsx`, `components/map/MapView.native.tsx`, `components/map/MapView.web.tsx`, `constants/colors.ts`
   - **Tech**: Zoom-aware style interpolation, shared sizing constants, marker label layout tuning
 
 #### Automatic Zoom by Window Size
@@ -176,6 +185,8 @@
 - [x] Add toggle to hide route list + stops list, show map full-width
   - [x] Button to collapse/expand sidebar (like split-view toggle)
   - [x] Saves space on mobile, shows more map
+  - [x] Keep routes list visible even when no live buses are running
+  - [x] Add "No active buses right now" notice while still allowing route/schedule browsing
   - **Tech**: State toggle + conditional rendering, responsive layout
 
 #### Full-Screen Map Control Discoverability
@@ -243,10 +254,10 @@
 ### 7. Bus Schedule & Arrivals Enhancement
 
 #### Discover Stop Arrivals Endpoint
-- [ ] Currently returns empty from `fetchArrivals(stopId)`
-  - [ ] **Must do**: Network inspection of ridebt.org → find correct method/endpoint
-  - [ ] Expected response: array of upcoming departures with times
-  - [ ] Once found, implement in `services/api/btApi.ts`
+- [x] Network inspection + endpoint integration completed for `fetchArrivals(stopId)`
+  - [x] **Done**: Verified ridebt.org method/endpoint and request shape
+  - [x] **Done**: Returns mapped upcoming departures in app arrival format
+  - [x] **Done**: Implemented in `services/api/btApi.ts`
 
 #### Bus Cycles & Estimated Stop Times
 - [ ] Once stop arrivals endpoint is found and working
@@ -366,6 +377,8 @@
   - [ ] Modify to call `getPredictedBusPositions()` when `useBuses` errors or stales
   - [ ] Show "Predicted" badge instead of "Live" when offline
   - [ ] Keep prediction updated every 10s (follow same cadence as live)
+  - [ ] Replace extra fallback side panel in Routes UI with a checkbox toggle at the top of the routes list
+  - [ ] Add a dedicated fallback details screen explaining exactly what fallback estimation is using
   - **Files**: `hooks/useBuses.ts` useBusPositions function
 
 ---
@@ -526,7 +539,7 @@
   - [ ] Adopt semantic versioning policy (`MAJOR.MINOR.PATCH`)
   - [ ] Require version bump before release publish (app + website)
   - [ ] Generate release notes from commits/issues and tag each release in GitHub
-  - [ ] Surface app version/build number in settings/about UI
+  - [x] Surface app version/build number in settings/about UI
   - **Tech**: GitHub Actions, release tags, changelog automation, Expo version/build config
 
 ---
@@ -538,7 +551,7 @@
 #### Dead Code & Structure Cleanup
 - [x] Remove or integrate currently unused files/components
   - [x] `components/map/RoutePolyline.tsx` (unused placeholder)
-  - [x] `components/ui/AlertBanner.tsx` (integrated into active screens)
+  - [x] `components/ui/AlertBanner.tsx` (removed after duplicate/closable alerts banner was deprecated)
   - [x] `store/busStore.ts` and `store/routeStore.ts` (removed; React Query remains source of truth)
   - [x] `app/(tabs)/explore.tsx` (removed template screen)
 - [x] Keep roadmap/docs aligned with implementation status (`README.md`, `API_DOCUMENTATION.md`, `TODO.md`)
@@ -586,13 +599,16 @@
 
 | Category | Item | Blocking | Est. Effort | Prerequisites |
 |----------|------|----------|-------------|---------------|
-| **Phase 1 - Critical** | Route detail screen | No | Medium | Navigation wiring |
-| **Phase 1 - Critical** | Stop arrivals endpoint | Yes | Low | API discovery |
 | **Phase 1 - Critical** | Stop ID/code normalization | Yes | Small | Arrivals + stops endpoint behavior |
+| **Phase 1 - Critical** | Stops header alerts pill parity | No | Small | Header component reuse from Routes tab |
+| **Phase 1 - Critical** | Cross-tab stop deselect fix | No | Small | Stable stop-focus state handoff |
+| **Phase 1 - Critical** | Background route/stop preloading stabilization | No | Medium | Query prefetch scheduler validation |
 | **Phase 1 - Critical** | Service level UI | No | Low | Calendar API discovery |
 | **Phase 1 - Critical** | Favorites persistence | No | Low | Zustand + SecureStore |
-| **Phase 1 - Critical** | Settings screen + store usage | No | Medium | settingsStore actions |
+| **Phase 1 - Critical** | Settings store wiring + persistence | No | Medium | settingsStore actions |
+| **Phase 1 - Critical** | Refresh interval control + runtime override | No | Medium | Settings cache + polling hook integration |
 | **Phase 2 - Core** | Offline fallback | No | Large | Static timetable JSON |
+| **Phase 2 - Core** | Fallback UI redesign (checkbox + details screen) | No | Medium | Fallback state surface in Routes UI |
 | **Phase 2 - Data** | Filter system | No | Medium | UI + state |
 | **Phase 2 - Data** | Route + stop search | No | Medium | Search index + navigation wiring |
 | **Phase 2 - Data** | View location on map | No | Small | Marker UI |
@@ -604,9 +620,8 @@
 | **Testing/Deployment** | App logo + website credits/footer | No | Small | Brand assets + shared layout |
 | **Tech Debt** | Self-hosted minimal telemetry | No | Medium | Local backend endpoint |
 | **Tech Debt** | README refresh | No | Small | Current feature inventory |
-| **Tech Debt** | Dead code cleanup | No | Small | Usage audit |
 | **Phase 3** | Trip planning | No | Large | Graph + routing |
 
 ---
 
-**Last Updated**: April 5, 2026
+**Last Updated**: April 9, 2026

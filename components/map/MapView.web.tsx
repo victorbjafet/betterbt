@@ -60,7 +60,6 @@ export default function TransitMapView({
   const [leaflet, setLeaflet] = useState<LeafletModules | null>(null);
   const [leafletLoadError, setLeafletLoadError] = useState<string | null>(null);
   const [isLeafletLoadTimedOut, setIsLeafletLoadTimedOut] = useState(false);
-  const [mapZoom, setMapZoom] = useState<number>(MAP_CONFIG.INITIAL_ZOOM);
   const motionTrackRef = useRef<Record<string, {
     start: { latitude: number; longitude: number };
     end: { latitude: number; longitude: number };
@@ -343,13 +342,13 @@ export default function TransitMapView({
         font: 500 10px/1.2 ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       }
       .betterbt-stop-focus-button {
-        border: 1px solid rgba(255, 255, 255, 0.28);
-        background: rgba(255, 255, 255, 0.08);
-        color: #f9fafb;
+        border: 1px solid rgba(102, 122, 161, 0.5);
+        background: rgba(28, 34, 52, 0.96);
+        color: #f3f4f6;
         border-radius: 999px;
         padding: 4px 9px;
         font: 600 10px/1.1 ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        cursor: default;
+        cursor: pointer;
       }
     `;
 
@@ -527,11 +526,7 @@ export default function TransitMapView({
     return null;
   }, [clickedBus, selectedBusLive]);
 
-  const visibleStops = useMemo(() => {
-    if (mapZoom <= 12) return [];
-    if (mapZoom <= 14) return filteredStops.slice(0, 180);
-    return filteredStops;
-  }, [filteredStops, mapZoom]);
+  const visibleStops = filteredStops;
 
   if (leafletLoadError) {
     return <div style={styles.errorState}>Map unavailable: {leafletLoadError}</div>;
@@ -737,24 +732,6 @@ export default function TransitMapView({
     return null;
   };
 
-  const HandleZoomTracking: React.FC = () => {
-    const map = leaflet.useMap();
-
-    useEffect(() => {
-      const handleZoomEnd = () => {
-        setMapZoom(map.getZoom());
-      };
-
-      handleZoomEnd();
-      map.on('zoomend', handleZoomEnd);
-      return () => {
-        map.off('zoomend', handleZoomEnd);
-      };
-    }, [map]);
-
-    return null;
-  };
-
   const HandleMapResize: React.FC = () => {
     const map = leaflet.useMap();
 
@@ -788,7 +765,7 @@ export default function TransitMapView({
     return null;
   };
 
-  const ResetViewport: React.FC<{ token: number; allBuses: Bus[] }> = ({ token, allBuses }) => {
+  const ResetViewport: React.FC<{ token: number; allBuses: Bus[]; allStops: Stop[] }> = ({ token, allBuses, allStops }) => {
     const map = leaflet.useMap();
 
     useEffect(() => {
@@ -820,6 +797,29 @@ export default function TransitMapView({
             }
           );
         }
+      } else if (allStops.length > 0) {
+        const latitudes = allStops.map((stop) => stop.latitude);
+        const longitudes = allStops.map((stop) => stop.longitude);
+
+        if (allStops.length === 1) {
+          map.flyTo([allStops[0].latitude, allStops[0].longitude], Math.max(map.getZoom(), 16), {
+            animate: true,
+            duration: 0.55,
+          });
+        } else {
+          map.fitBounds(
+            [
+              [Math.min(...latitudes), Math.min(...longitudes)],
+              [Math.max(...latitudes), Math.max(...longitudes)],
+            ],
+            {
+              padding: [56, 56],
+              animate: true,
+              duration: 0.65,
+              maxZoom: 16,
+            }
+          );
+        }
       } else {
         map.flyTo([MAP_CONFIG.INITIAL_LATITUDE, MAP_CONFIG.INITIAL_LONGITUDE], MAP_CONFIG.INITIAL_ZOOM, {
           animate: true,
@@ -833,7 +833,7 @@ export default function TransitMapView({
       lastHandledBusFocusKey.current = null;
       lastHandledStopFocusKey.current = null;
       lastHandledResetToken.current = token;
-    }, [allBuses, map, token]);
+    }, [allBuses, allStops, map, token]);
 
     return null;
   };
@@ -842,10 +842,12 @@ export default function TransitMapView({
     fullscreenToken: number;
     layoutToken: number;
     allBuses: Bus[];
+    allStops: Stop[];
     activeRouteId?: string;
     routeGeometry: RouteGeometryPath[];
     focusedBus: Bus | null;
-  }> = ({ fullscreenToken, layoutToken, allBuses, activeRouteId, routeGeometry, focusedBus }) => {
+    focusedStop: Stop | null;
+  }> = ({ fullscreenToken, layoutToken, allBuses, allStops, activeRouteId, routeGeometry, focusedBus, focusedStop }) => {
     const map = leaflet.useMap();
 
     useEffect(() => {
@@ -859,6 +861,11 @@ export default function TransitMapView({
 
       if (focusedBus) {
         map.flyTo([focusedBus.latitude, focusedBus.longitude], Math.max(map.getZoom(), 17), {
+          animate: true,
+          duration: 0.55,
+        });
+      } else if (focusedStop) {
+        map.flyTo([focusedStop.latitude, focusedStop.longitude], Math.max(map.getZoom(), 17), {
           animate: true,
           duration: 0.55,
         });
@@ -919,6 +926,29 @@ export default function TransitMapView({
             }
           );
         }
+      } else if (allStops.length > 0) {
+        const latitudes = allStops.map((stop) => stop.latitude);
+        const longitudes = allStops.map((stop) => stop.longitude);
+
+        if (allStops.length === 1) {
+          map.flyTo([allStops[0].latitude, allStops[0].longitude], Math.max(map.getZoom(), 16), {
+            animate: true,
+            duration: 0.55,
+          });
+        } else {
+          map.fitBounds(
+            [
+              [Math.min(...latitudes), Math.min(...longitudes)],
+              [Math.max(...latitudes), Math.max(...longitudes)],
+            ],
+            {
+              padding: [56, 56],
+              animate: true,
+              duration: 0.65,
+              maxZoom: 16,
+            }
+          );
+        }
       } else {
         map.flyTo([MAP_CONFIG.INITIAL_LATITUDE, MAP_CONFIG.INITIAL_LONGITUDE], MAP_CONFIG.INITIAL_ZOOM, {
           animate: true,
@@ -927,7 +957,7 @@ export default function TransitMapView({
       }
 
       lastHandledViewportToken.current = viewportToken;
-    }, [activeRouteId, allBuses, focusedBus, fullscreenToken, layoutToken, map, routeGeometry]);
+    }, [activeRouteId, allBuses, allStops, focusedBus, focusedStop, fullscreenToken, layoutToken, map, routeGeometry]);
 
     return null;
   };
@@ -944,17 +974,18 @@ export default function TransitMapView({
         <FocusRouteBuses busesOnRoute={filteredBuses} routeGeometry={routePaths} activeRouteId={selectedRouteId} />
         <FlyToBus target={focusedBusTarget} />
         <FlyToStop target={focusedStop} />
-        <ResetViewport token={resetViewToken} allBuses={filteredBuses} />
+        <ResetViewport token={resetViewToken} allBuses={filteredBuses} allStops={filteredStops} />
         <RecenterOnViewportChange
           fullscreenToken={fullscreenViewToken}
           layoutToken={layoutVersion}
           allBuses={filteredBuses}
+          allStops={filteredStops}
           activeRouteId={selectedRouteId}
           routeGeometry={routePaths}
           focusedBus={selectedBusLive}
+          focusedStop={focusedStop ?? null}
         />
         <HandleMapResize />
-        <HandleZoomTracking />
         <HandleMapBackgroundClick />
 
         <TileLayer

@@ -32,6 +32,8 @@ export interface Theme {
   HEADER_BG: string;
   TAB_BG: string;
   CARD: string;
+  STOP_CODE_PILL_BG: string;
+  STOP_CODE_PILL_TEXT: string;
 }
 
 export const DARK_THEME: Theme = {
@@ -55,6 +57,8 @@ export const DARK_THEME: Theme = {
   HEADER_BG:      '#1A1D27',
   TAB_BG:         '#1A1D27',
   CARD:           '#242736',
+  STOP_CODE_PILL_BG: '#444444',
+  STOP_CODE_PILL_TEXT: '#FFFFFF',
 };
 
 export const LIGHT_THEME: Theme = {
@@ -78,6 +82,8 @@ export const LIGHT_THEME: Theme = {
   HEADER_BG:      '#2563EB',
   TAB_BG:         '#FFFFFF',
   CARD:           '#F9FAFB',
+  STOP_CODE_PILL_BG: '#444444',
+  STOP_CODE_PILL_TEXT: '#FFFFFF',
 };
 
 /** Fallback for contexts where the hook can't be called — always dark */

@@ -17,6 +17,41 @@ export default function TabsLayout() {
       ? 'warning'
       : 'info';
 
+  const renderHeaderTitleWithAlerts = (title: string) => (
+    <View style={styles.headerTitleRow}>
+      <Text style={[styles.headerTitleText, { color: theme.TEXT }]}>{title}</Text>
+      {alerts.length > 0 ? (
+        <Pressable
+          onPress={() => router.push('/(tabs)/alerts')}
+          style={[
+            styles.headerAlertPill,
+            {
+              borderColor:
+                highestSeverity === 'critical'
+                  ? theme.ERROR
+                  : highestSeverity === 'warning'
+                    ? theme.WARNING
+                    : theme.INFO,
+            },
+          ]}
+        >
+          <MaterialCommunityIcons
+            name="bell-alert-outline"
+            size={14}
+            color={
+              highestSeverity === 'critical'
+                ? theme.ERROR
+                : highestSeverity === 'warning'
+                  ? theme.WARNING
+                  : theme.INFO
+            }
+          />
+          <Text style={[styles.headerAlertText, { color: theme.TEXT }]}>Alerts {alerts.length}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+
   return (
     <Tabs
       initialRouteName="routes"
@@ -59,40 +94,7 @@ export default function TabsLayout() {
         name="routes"
         options={{
           title: 'Routes',
-          headerTitle: () => (
-            <View style={styles.headerTitleRow}>
-              <Text style={[styles.headerTitleText, { color: theme.TEXT }]}>All Routes</Text>
-              {alerts.length > 0 ? (
-                <Pressable
-                  onPress={() => router.push('/(tabs)/alerts')}
-                  style={[
-                    styles.headerAlertPill,
-                    {
-                      borderColor:
-                        highestSeverity === 'critical'
-                          ? theme.ERROR
-                          : highestSeverity === 'warning'
-                            ? theme.WARNING
-                            : theme.INFO,
-                    },
-                  ]}
-                >
-                  <MaterialCommunityIcons
-                    name="bell-alert-outline"
-                        size={14}
-                    color={
-                      highestSeverity === 'critical'
-                        ? theme.ERROR
-                        : highestSeverity === 'warning'
-                          ? theme.WARNING
-                          : theme.INFO
-                    }
-                  />
-                      <Text style={[styles.headerAlertText, { color: theme.TEXT }]}>Alerts {alerts.length}</Text>
-                    </Pressable>
-              ) : null}
-            </View>
-          ),
+          headerTitle: () => renderHeaderTitleWithAlerts('All Routes'),
           tabBarIcon: ({ color }) => (
             <MaterialCommunityIcons name="bus" size={28} color={color} />
           ),
@@ -103,7 +105,7 @@ export default function TabsLayout() {
         options={{
           title: 'Stops',
           tabBarLabel: 'Stops',
-          headerTitle: 'Stops',
+          headerTitle: () => renderHeaderTitleWithAlerts('Stops'),
           tabBarIcon: ({ color }) => (
             <MaterialCommunityIcons name="map-marker" size={28} color={color} />
           ),
