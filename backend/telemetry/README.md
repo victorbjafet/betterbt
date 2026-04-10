@@ -33,6 +33,9 @@ node backend/telemetry/server.mjs
 Server default:
 - `http://localhost:4318`
 
+Optional bind host override:
+- `TELEMETRY_BIND_HOST=127.0.0.1`
+
 ## App Configuration
 
 Set this environment variable for BetterBT app builds:
@@ -83,6 +86,9 @@ Default retention windows:
 Optional overrides:
 - `TELEMETRY_RAW_RETENTION_DAYS`
 - `TELEMETRY_AGG_RETENTION_DAYS`
+
+Optional data directory override (recommended for production persistence):
+- `TELEMETRY_DATA_DIR=/var/lib/betterbt/telemetry`
 
 Set either override to a positive integer (days) to enable pruning.
 

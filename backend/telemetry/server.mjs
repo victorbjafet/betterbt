@@ -7,6 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const PORT = Number(process.env.TELEMETRY_PORT || 4318);
+const BIND_HOST = process.env.TELEMETRY_BIND_HOST?.trim() || '127.0.0.1';
 const RAW_RETENTION_DAYS = Number(process.env.TELEMETRY_RAW_RETENTION_DAYS || 0);
 const AGG_RETENTION_DAYS = Number(process.env.TELEMETRY_AGG_RETENTION_DAYS || 0);
 const BODY_LIMIT_BYTES = 1024 * 1024;
@@ -21,7 +22,7 @@ const DASHBOARD_AUTH_FAIL_MAX_ATTEMPTS = Number(process.env.TELEMETRY_DASHBOARD_
 const dashboardRequestLog = new Map();
 const dashboardAuthFailureLog = new Map();
 
-const dataDir = path.join(__dirname, 'data');
+const dataDir = process.env.TELEMETRY_DATA_DIR?.trim() || path.join(__dirname, 'data');
 const rawEventsFile = path.join(dataDir, 'events.ndjson');
 const aggregateFile = path.join(dataDir, 'aggregates.json');
 
@@ -788,8 +789,8 @@ const server = http.createServer(async (req, res) => {
   sendJson(res, 404, { error: 'not found' });
 });
 
-server.listen(PORT, () => {
-  console.log(`[telemetry-server] listening on http://localhost:${PORT}`);
+server.listen(PORT, BIND_HOST, () => {
+  console.log(`[telemetry-server] listening on http://${BIND_HOST}:${PORT}`);
   console.log('[telemetry-server] POST /telemetry/events');
   console.log('[telemetry-server] GET  /telemetry/health');
   console.log('[telemetry-server] GET  /telemetry/aggregates');
