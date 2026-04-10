@@ -83,7 +83,7 @@ export default function SettingsScreen() {
         <Text style={[styles.title, { color: theme.TEXT }]}>Settings</Text>
 
         <View style={[styles.card, { borderColor: theme.BORDER, backgroundColor: theme.SURFACE }]}> 
-          <Text style={[styles.cardTitle, { color: theme.TEXT }]}>Page zoom scale</Text>
+          <Text style={[styles.cardTitle, { color: theme.TEXT }]}>Page zoom scale (broken)</Text>
 
           <View style={styles.zoomRow}>
             <TextInput
@@ -130,14 +130,14 @@ export default function SettingsScreen() {
           onPress={openFeedback}
           style={[styles.linkButton, { borderColor: theme.BORDER, backgroundColor: theme.SURFACE_2 }]}
         >
-          <Text style={[styles.linkButtonText, { color: theme.TEXT }]}>Feedback</Text>
+          <Text style={[styles.linkButtonText, { color: theme.TEXT }]}>Feedback (broken)</Text>
         </Pressable>
 
         <Pressable
           onPress={openBugReport}
           style={[styles.linkButton, { borderColor: theme.BORDER, backgroundColor: theme.SURFACE_2 }]}
         >
-          <Text style={[styles.linkButtonText, { color: theme.TEXT }]}>Bug report</Text>
+          <Text style={[styles.linkButtonText, { color: theme.TEXT }]}>Bug report (broken)</Text>
         </Pressable>
 
         <Pressable

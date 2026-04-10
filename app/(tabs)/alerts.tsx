@@ -89,8 +89,16 @@ export default function AlertsScreen() {
           );
         }}
         ListEmptyComponent={
-          <View style={styles.centerContainer}>
-            <Text style={{ color: theme.TEXT_SECONDARY, fontSize: 18 }}>🟢 No active alerts</Text>
+          <View
+            style={[
+              styles.noAlertsNotice,
+              {
+                borderColor: theme.WARNING,
+                backgroundColor: theme.SURFACE_2,
+              },
+            ]}
+          >
+            <Text style={[styles.noAlertsNoticeText, { color: theme.WARNING }]}>No active alerts</Text>
           </View>
         }
       />
@@ -125,5 +133,17 @@ const styles = StyleSheet.create({
   alertRoutes: {
     fontSize: 12,
     fontWeight: '500',
+  },
+  noAlertsNotice: {
+    marginTop: 8,
+    marginHorizontal: 16,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  noAlertsNoticeText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

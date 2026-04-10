@@ -59,6 +59,13 @@ npx expo start
 - API behavior and probe details are documented in `API_DOCUMENTATION.md`.
 - Planning notes are in `bt-app-plan.md`.
 
+## Versioning
+
+BetterBT uses a date-based app version format:
+- `YYYY.MM.DD.N`
+- `N` starts at `0` for the first release of a given date
+- `N` increments (`.1`, `.2`, etc.) for additional releases on that same date
+
 ## Showcase Mock API Mode
 
 BetterBT includes a file-gated mock API mode for demos when the RideBT API is unavailable.

@@ -67,11 +67,11 @@ Telemetry is used for:
 
 ## Retention
 
-Default self-hosted retention targets:
-- Raw event log: 30 days
-- Daily aggregates: 180 days
+Current self-hosted retention configuration:
+- Raw event log: permanent
+- Daily aggregates: permanent
 
-Projects self-hosting BetterBT telemetry can adjust these windows in the local telemetry server configuration.
+Projects self-hosting BetterBT telemetry can configure day-based pruning in the local telemetry server if needed.
 
 ## Storage and Transport
 
