@@ -1,7 +1,8 @@
 import { TransitBackgroundPrefetch } from '@/components/system/TransitBackgroundPrefetch';
+import { initializeTelemetry } from '@/services/telemetry';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const queryClient = new QueryClient({
@@ -14,6 +15,10 @@ const queryClient = new QueryClient({
 });
 
 export default function RootLayout() {
+  useEffect(() => {
+    initializeTelemetry();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TransitBackgroundPrefetch />

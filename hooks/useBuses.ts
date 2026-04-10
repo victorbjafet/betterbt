@@ -7,6 +7,7 @@ import { REFRESH_INTERVALS, STALE_TIMES } from '@/constants/config';
 import { getStaticRouteDisplayName } from '@/constants/staticTransitData';
 import { fetchVehicles } from '@/services/api/btApi';
 import { getBusColorKey, getBusColors, resolveBusColor } from '@/services/busColorRegistry';
+import { trackEvent } from '@/services/telemetry';
 import { Bus } from '@/types/transit';
 import { useQuery } from '@tanstack/react-query';
 
@@ -14,33 +15,47 @@ export function useBuses() {
   return useQuery({
     queryKey: ['buses'],
     queryFn: async (): Promise<Bus[]> => {
-      const data = await fetchVehicles();
+      const start = Date.now();
 
-      const colorMap = await getBusColors();
-      
-      const buses = data.map((vehicle) => ({
-        id: vehicle.id,
-        routeId: vehicle.routeID,
-        routeName:
-          vehicle.routeName && vehicle.routeName !== vehicle.routeID
-            ? vehicle.routeName
-            : getStaticRouteDisplayName(vehicle.routeID),
-        routeColor:
-          colorMap[getBusColorKey(vehicle.routeName, vehicle.routeID)] ??
-          resolveBusColor(vehicle.routeName, vehicle.routeID),
-        heading: vehicle.heading,
-        latitude: vehicle.lat,
-        longitude: vehicle.lng,
-        speed: vehicle.speed,
-        lastUpdated: new Date(vehicle.updated * 1000),
-        currentStopId: vehicle.stopID,
-        capacity: vehicle.capacity,
-        occupancyPercent: vehicle.percentOfCapacity,
-        passengers: vehicle.passengers,
-        isAtStop: vehicle.isBusAtStop,
-      }));
-      
-      return buses;
+      try {
+        const data = await fetchVehicles();
+        const colorMap = await getBusColors();
+
+        const buses = data.map((vehicle) => ({
+          id: vehicle.id,
+          routeId: vehicle.routeID,
+          routeName:
+            vehicle.routeName && vehicle.routeName !== vehicle.routeID
+              ? vehicle.routeName
+              : getStaticRouteDisplayName(vehicle.routeID),
+          routeColor:
+            colorMap[getBusColorKey(vehicle.routeName, vehicle.routeID)] ??
+            resolveBusColor(vehicle.routeName, vehicle.routeID),
+          heading: vehicle.heading,
+          latitude: vehicle.lat,
+          longitude: vehicle.lng,
+          speed: vehicle.speed,
+          lastUpdated: new Date(vehicle.updated * 1000),
+          currentStopId: vehicle.stopID,
+          capacity: vehicle.capacity,
+          occupancyPercent: vehicle.percentOfCapacity,
+          passengers: vehicle.passengers,
+          isAtStop: vehicle.isBusAtStop,
+        }));
+
+        trackEvent('api.query.buses.success', {
+          durationMs: Date.now() - start,
+          count: buses.length,
+        });
+
+        return buses;
+      } catch (error) {
+        trackEvent('api.query.buses.failure', {
+          durationMs: Date.now() - start,
+          message: error instanceof Error ? error.message : String(error),
+        });
+        throw error;
+      }
     },
     refetchInterval: REFRESH_INTERVALS.VEHICLES,
     refetchIntervalInBackground: false,

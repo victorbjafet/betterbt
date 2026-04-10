@@ -7,13 +7,25 @@ import { ScreenWrapper } from '@/components/layout/ScreenWrapper';
 import { InlineErrorState } from '@/components/ui/InlineErrorState';
 import { useAlerts } from '@/hooks/useAlerts';
 import { useTheme } from '@/hooks/useTheme';
-import { trackEvent } from '@/services/telemetry';
-import React from 'react';
+import { trackEvent, trackScreenView } from '@/services/telemetry';
+import React, { useEffect } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 
 export default function AlertsScreen() {
   const theme = useTheme();
   const { data: alerts = [], isLoading, error, refetch } = useAlerts();
+
+  useEffect(() => {
+    trackScreenView('alerts');
+  }, []);
+
+  useEffect(() => {
+    if (isLoading || error) return;
+
+    trackEvent('alerts.loaded', {
+      count: alerts.length,
+    });
+  }, [alerts.length, error, isLoading]);
 
   const alertBg = theme.isDark
     ? { info: '#0D1F35', warning: '#2D1A00', critical: '#2D0707' }

@@ -45,3 +45,9 @@ export const MAP_CONFIG = {
 
 // CORS handling
 export const CORS_PROXY = null; // Set to proxy URL if RideBT API fails with CORS
+
+// Self-hosted telemetry is intentionally separate from RideBT API endpoints.
+export const TELEMETRY_CONFIG = {
+  ENDPOINT: process.env.EXPO_PUBLIC_TELEMETRY_ENDPOINT?.trim() || '',
+  ENABLE_IN_DEV: false,
+};

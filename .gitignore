@@ -75,6 +75,7 @@ Thumbs.db
 *.tmp
 *.temp
 *.bak
+backend/telemetry/data/
 debug/mock-api.enabled
 /debug/mock-api.enabled
 

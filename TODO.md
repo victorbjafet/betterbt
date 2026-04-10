@@ -14,7 +14,7 @@
 
 #### Route Detail Ownership (Consolidation)
 - [x] Designate routes tab (`app/(tabs)/routes.tsx`) as the canonical route-detail UX for Phase 1
-- [x] Convert `app/route/[id].tsx` into a deep-link bridge that forwards to routes tab (clean `/routes` URL with in-memory route selection handoff)
+- [x] Convert `app/route/[id].tsx` into a deep-link bridge that forwards to routes tab with `routeId`
 - [ ] Later: extract shared route-detail module for a standalone stack screen (without duplicating logic)
   - [ ] Reuse shared components/hooks between routes tab and stack route screen
   - [ ] Revisit whether in-app taps should open standalone route detail vs. focus in-tab
@@ -25,7 +25,6 @@
   - [x] **Discovery**: Found departures endpoint used by ridebt.org (`bt_routes:getNextDeparturesForStop`)
   - [x] Updated `services/api/btApi.ts` → `fetchArrivals(stopId)` to map departures into arrivals
   - [ ] Normalize stop identifiers (`stopId` vs `stopCode`) across map stops and arrivals API
-  - [ ] Add true live-vs-scheduled status for stop departures (badge should switch to Live when backed by real-time data)
   - [x] Add ETA countdown timer (minutes until arrival, "Now" if ≤0)
   - [x] Show route color badges with route names
   - [x] Color-code by source: "Live" (green) vs "Scheduled" (gray)
@@ -34,9 +33,6 @@
 #### Navigation Wiring
 - [ ] Decide and lock route tap behavior: in-tab focus (current) vs standalone detail screen (later)
 - [x] Make "See stop info" action open stop detail in Stops tab path endpoint (`/stops`)
-- [x] Remove `?routeId=` query-string navigation and keep stop → routes transitions on clean `/routes` URL
-- [ ] On Stops → Routes handoff, auto-select the cycle that contains the originating stop (minor, tedious, low priority)
-- [ ] Add a manual full-app refresh button that forces a complete page/app data refresh (consider placing it next to the header item count)
 - [ ] Ensure back button / dismissal works correctly
 - [x] Show the alerts header label/pill at the top of Stops tab the same way it appears on Routes tab
 - **Tech**: `expo-router` dynamic routes `route/[id]` and `stop/[id]`
@@ -46,7 +42,7 @@
   - [ ] Counter should increase without manual page opens
   - [ ] Prefetch queue should continue while foreground queries are idle
   - [ ] Keep foreground-visible requests (live buses, active screen data) higher priority than background tasks
-  - [x] When user taps a route from a stop, Routes tab auto-selects the route and preserves stop context without relying on URL query params
+  - [ ] When user taps a route from a stop, Routes tab should auto-select and scroll to that same stop in the route stop list after route data loads
   - [ ] Fix broken stop deselect behavior after jumping from Stops tab into Routes tab (clicking off the stop should clear selection)
   - **Tech**: TanStack Query prefetch scheduler + shared cache progress state
 
@@ -139,8 +135,6 @@
   - [x] Wire stop marker click handler to set selected stop state
   - [x] Scroll/focus matching stop row in stops list UI
   - [x] Animate map camera to clicked stop with tighter zoom
-  - [ ] Consider switching stop-hit selection radius to screen-space/absolute size relative to viewport (instead of map-distance radius)
-  - [ ] Feature consideration: show live buses on Stops tab map (not just stops/departures overlays)
   - **Files**: `components/map/MapView.native.tsx`, `components/map/MapView.web.tsx`, `app/(tabs)/routes.tsx`
 
 #### Mobile Zoom Controls & Responsive Map Scaling
@@ -185,8 +179,6 @@
 - [x] Add toggle to hide route list + stops list, show map full-width
   - [x] Button to collapse/expand sidebar (like split-view toggle)
   - [x] Saves space on mobile, shows more map
-  - [x] Keep routes list visible even when no live buses are running
-  - [x] Add "No active buses right now" notice while still allowing route/schedule browsing
   - **Tech**: State toggle + conditional rendering, responsive layout
 
 #### Full-Screen Map Control Discoverability
@@ -551,7 +543,7 @@
 #### Dead Code & Structure Cleanup
 - [x] Remove or integrate currently unused files/components
   - [x] `components/map/RoutePolyline.tsx` (unused placeholder)
-  - [x] `components/ui/AlertBanner.tsx` (removed after duplicate/closable alerts banner was deprecated)
+  - [x] `components/ui/AlertBanner.tsx` (integrated into active screens)
   - [x] `store/busStore.ts` and `store/routeStore.ts` (removed; React Query remains source of truth)
   - [x] `app/(tabs)/explore.tsx` (removed template screen)
 - [x] Keep roadmap/docs aligned with implementation status (`README.md`, `API_DOCUMENTATION.md`, `TODO.md`)
@@ -576,13 +568,13 @@
   - [x] Added lightweight in-app error event logging hooks; full external sink integration remains optional.
 
 #### Self-Hosted Usage Telemetry
-- [ ] Add minimal, privacy-conscious telemetry to a locally hosted backend
-  - [ ] Track aggregate usage metrics only (active sessions, visit timestamps, basic platform)
-  - [ ] Build small local ingestion service endpoint for telemetry events
-  - [ ] Batch and retry events client-side; avoid blocking UI on network failures
-  - [ ] Add opt-out control in settings and document data collection policy in README
-  - [ ] Keep telemetry endpoint separate from BT APIs and disable in development by default
-  - **Files**: `services/telemetry.ts`, `store/settingsStore.ts`, `README.md`, backend folder (new)
+- [x] Add minimal, privacy-conscious telemetry to a locally hosted backend
+  - [x] Track aggregate usage metrics only (active sessions, visit timestamps, basic platform)
+  - [x] Build small local ingestion service endpoint for telemetry events
+  - [x] Batch and retry events client-side; avoid blocking UI on network failures
+  - [x] Add a settings button below the GitHub source link that opens the standalone data collection policy markdown file
+  - [x] Keep telemetry endpoint separate from BT APIs and disable in development by default
+  - **Files**: `services/telemetry.ts`, `app/settings.tsx`, `DATA_COLLECTION_POLICY.md`, backend folder (new)
   - **Tech**: lightweight HTTP event ingestion, anonymized payload schema, retention limits
 
 #### README Refresh
