@@ -8,6 +8,7 @@ import { MapErrorBoundary } from '@/components/map/MapErrorBoundary';
 import MapView from '@/components/map/MapView';
 import { InlineErrorState } from '@/components/ui/InlineErrorState';
 import { RouteChip } from '@/components/ui/RouteChip';
+import { getRouteColor } from '@/constants/colors';
 import { useBusPositions } from '@/hooks/useBuses';
 import { useFavoriteRouteGeometry } from '@/hooks/useFavoriteRouteGeometry';
 import { useRouteGeometry } from '@/hooks/useRouteGeometry';
@@ -140,7 +141,9 @@ export default function RoutesScreen() {
   const pendingRouteId = useSelectedRouteStore((state) => state.pendingRouteId);
   const clearPendingRouteId = useSelectedRouteStore((state) => state.clearPendingRouteId);
   const selectedStopId = useSelectedStopStore((state) => state.selectedStopId);
+  const selectedStopSource = useSelectedStopStore((state) => state.selectedStopSource);
   const setSelectedStopId = useSelectedStopStore((state) => state.setSelectedStopId);
+  const clearSelectedStop = useSelectedStopStore((state) => state.clearSelectedStop);
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { data: buses = [], isLoading: isBusesLoading, isError: isBusesError } = useBusPositions();
@@ -234,6 +237,7 @@ export default function RoutesScreen() {
   const favoriteRouteSet = useMemo(() => new Set(favoriteRouteIds), [favoriteRouteIds]);
   const hasFavorites = favoriteRouteIds.length > 0;
   const isFavoritesMode = favoritesViewEnabled;
+  const isFavoritesAggregateView = isFavoritesMode && !selectedRouteId;
 
   useEffect(() => {
     trackScreenView('routes');
@@ -261,6 +265,7 @@ export default function RoutesScreen() {
     }, {}),
     [routes]
   );
+  const fallbackRouteChipColors = useMemo(() => getRouteColor('__fallback__'), []);
   const apiOrderIndexById = useMemo(
     () => API_REQUEST_ROUTE_ORDER.reduce<Record<string, number>>((acc, routeId, index) => {
       acc[routeId] = index;
@@ -317,14 +322,14 @@ export default function RoutesScreen() {
     const selectedPatternKey = normalizePatternKey(selectedCycle.patternName);
     return selectedRouteGeometry.filter((path) => normalizePatternKey(path.patternName) === selectedPatternKey);
   }, [selectedCycle, selectedRouteGeometry, selectedRouteId]);
-  const displayedRouteGeometry = isFavoritesMode ? favoriteRouteGeometry : selectedCycleGeometry;
+  const displayedRouteGeometry = isFavoritesAggregateView ? favoriteRouteGeometry : selectedCycleGeometry;
   const activeDisplayedRouteIds = useMemo(
     () => Array.from(new Set(displayedBuses.map((bus) => bus.routeId))),
     [displayedBuses]
   );
   const { data: predictionRouteGeometry = [] } = useFavoriteRouteGeometry(activeDisplayedRouteIds, routeColorById);
   const displayedPredictionRouteGeometry = useMemo(() => {
-    if (isFavoritesMode || !selectedRouteId) return predictionRouteGeometry;
+    if (!selectedRouteId) return predictionRouteGeometry;
 
     if (!selectedCycle) {
       return predictionRouteGeometry.filter((path) => path.routeId === selectedRouteId);
@@ -337,7 +342,7 @@ export default function RoutesScreen() {
     return predictionRouteGeometry.filter(
       (path) => path.routeId === selectedRouteId && normalizePatternKey(path.patternName) === selectedPatternKey
     );
-  }, [isFavoritesMode, predictionRouteGeometry, selectedCycle, selectedRouteId]);
+  }, [predictionRouteGeometry, selectedCycle, selectedRouteId]);
   const showNoActiveBusesNotice =
     !isFavoritesMode && !isBusesLoading && !isBusesError && displayedBuses.length === 0;
 
@@ -360,6 +365,7 @@ export default function RoutesScreen() {
 
   useEffect(() => {
     if (!selectedStopId) return;
+    if (selectedStopSource !== 'stops-to-routes-handoff') return;
     if (!selectedRouteId) return;
     if (selectedRouteStops.length === 0) return;
 
@@ -382,7 +388,18 @@ export default function RoutesScreen() {
       setFocusedStopId(focusStopId);
       setFocusedStopSource('list');
     }
-  }, [focusedStopId, focusedStopSource, selectedRouteId, selectedRouteStops, selectedStopId]);
+
+    // Consume cross-tab stop handoff once so manual stop selection is not overridden.
+    clearSelectedStop();
+  }, [
+    clearSelectedStop,
+    focusedStopId,
+    focusedStopSource,
+    selectedRouteId,
+    selectedRouteStops,
+    selectedStopId,
+    selectedStopSource,
+  ]);
 
   const focusedBus = useMemo(
     () => displayedBuses.find((bus) => bus.id === focusedBusId) ?? null,
@@ -677,6 +694,14 @@ export default function RoutesScreen() {
   }, [apiOrderIndexById, busesByRoute, nightPriorityIndexById, visibleRoutes]);
 
   const routeListData = sortedVisibleRoutes;
+  const routesMenuCount = routeListData.length;
+  const stopsMenuCount = alignedStopTimetableRows.length;
+  const stopsPanelTitle = selectedRoute
+    ? `Stops • ${selectedRoute.shortName}`
+    : isFavoritesMode
+      ? 'Stops • Favorites'
+      : 'Stops';
+
   useEffect(() => {
     let isMounted = true;
 
@@ -752,7 +777,6 @@ export default function RoutesScreen() {
   };
 
   const handleRoutePress = useCallback((routeId: string) => {
-    setFavoritesViewEnabled(false);
     setFocusedStopId(null);
     setFocusedBusId(null);
     setSelectedCycleId(null);
@@ -865,7 +889,7 @@ export default function RoutesScreen() {
     const stopId = rawStopId.trim();
     if (!stopId) return;
 
-    setSelectedStopId(stopId);
+    setSelectedStopId(stopId, 'routes-to-stops-handoff');
 
     router.push({
       pathname: '/(tabs)/stops',
@@ -916,7 +940,7 @@ export default function RoutesScreen() {
   }, [focusedStopId, selectedCycle?.id]);
 
   const renderStopsPanelBody = () => {
-    if (isFavoritesMode) {
+    if (isFavoritesAggregateView) {
       return (
         <View style={styles.stopsContent}>
           <Text style={[styles.stopsText, { color: theme.TEXT_SECONDARY }]}>Favorites mode is active. Stops list is hidden.</Text>
@@ -1007,9 +1031,22 @@ export default function RoutesScreen() {
                   <View style={styles.stopRowInner}>
                     <View style={styles.stopNameWrap}>
                       <View style={styles.stopNameHeaderRow}>
-                        <Text style={[styles.stopRowText, styles.stopNameCell, { color: theme.TEXT }]} numberOfLines={1}>
-                          {row.stopName} ({row.stopCode})
-                        </Text>
+                        <View style={[styles.stopNameLabelRow, styles.stopNameCell]}>
+                          <View
+                            style={[
+                              styles.stopCodePill,
+                              {
+                                borderColor: fallbackRouteChipColors.bg,
+                                backgroundColor: fallbackRouteChipColors.bg,
+                              },
+                            ]}
+                          >
+                            <Text style={[styles.stopCodePillText, { color: fallbackRouteChipColors.text }]}>{row.stopCode}</Text>
+                          </View>
+                          <Text style={[styles.stopRowText, styles.stopNameText, { color: theme.TEXT }]} numberOfLines={1}>
+                            {row.stopName}
+                          </Text>
+                        </View>
                         {isSelectedStop ? (
                           <Pressable
                             onPress={(event) => {
@@ -1056,7 +1093,7 @@ export default function RoutesScreen() {
                                 },
                               ]}
                             >
-                              <Text style={[styles.stopTimeText, { color: theme.TEXT_SECONDARY }]}>none</Text>
+                              <Text style={[styles.stopTimeText, { color: theme.TEXT_SECONDARY }]}>--</Text>
                             </View>
                           );
                         }
@@ -1187,7 +1224,11 @@ export default function RoutesScreen() {
               >
               <View style={[styles.panelHeader, { borderBottomColor: theme.BORDER }]}>
                 <View style={styles.routesHeaderRow}>
-                  <Text style={[styles.panelTitle, { color: theme.TEXT }]}>Routes</Text>
+                  <View style={styles.panelTitleMetaRow}>
+                    <Text style={[styles.panelTitle, { color: theme.TEXT }]}>Routes</Text>
+                    <Text style={[styles.panelMetaText, { color: theme.TEXT_SECONDARY }]}>•</Text>
+                    <Text style={[styles.panelMetaText, { color: theme.TEXT_SECONDARY }]}>{routesMenuCount}</Text>
+                  </View>
                   <Pressable
                     onPress={toggleFavoritesView}
                     style={[
@@ -1205,7 +1246,6 @@ export default function RoutesScreen() {
                     </Text>
                   </Pressable>
                 </View>
-                <Text style={[styles.panelSubtitle, { color: theme.TEXT_SECONDARY }]}>Tap a route to focus the map</Text>
                 {showNoActiveBusesNotice ? (
                   <View
                     style={[
@@ -1251,7 +1291,7 @@ export default function RoutesScreen() {
                       stopDeparturesById={stopDeparturesById}
                       routePaths={displayedRouteGeometry}
                       predictionRoutePaths={displayedPredictionRouteGeometry}
-                      selectedRouteId={isFavoritesMode ? undefined : selectedRouteId || undefined}
+                      selectedRouteId={isFavoritesAggregateView ? undefined : selectedRouteId || undefined}
                       resetViewToken={resetViewToken}
                       fullscreenViewToken={fullscreenViewToken}
                       layoutVersion={mapLayoutVersion}
@@ -1296,13 +1336,13 @@ export default function RoutesScreen() {
                 > 
                 <View style={[styles.panelHeader, { borderBottomColor: theme.BORDER }]}>
                   <View style={styles.stopsHeaderRow}>
-                    <Text style={[styles.panelTitle, { color: theme.TEXT }]}> 
-                      {selectedRoute
-                        ? `Stops • ${selectedRoute.shortName}`
-                        : isFavoritesMode
-                          ? 'Stops • Favorites'
-                          : 'Stops'}
-                    </Text>
+                    <View style={styles.panelTitleMetaRow}>
+                      <Text style={[styles.panelTitle, { color: theme.TEXT }]}> 
+                        {stopsPanelTitle}
+                      </Text>
+                      <Text style={[styles.panelMetaText, { color: theme.TEXT_SECONDARY }]}>•</Text>
+                      <Text style={[styles.panelMetaText, { color: theme.TEXT_SECONDARY }]}>{stopsMenuCount}</Text>
+                    </View>
                     <View style={styles.stopsHeaderActions}>
                       {selectedRoute ? (
                         <Pressable
@@ -1364,7 +1404,7 @@ export default function RoutesScreen() {
                       stopDeparturesById={stopDeparturesById}
                       routePaths={displayedRouteGeometry}
                       predictionRoutePaths={displayedPredictionRouteGeometry}
-                      selectedRouteId={isFavoritesMode ? undefined : selectedRouteId || undefined}
+                      selectedRouteId={isFavoritesAggregateView ? undefined : selectedRouteId || undefined}
                       resetViewToken={resetViewToken}
                       fullscreenViewToken={fullscreenViewToken}
                       layoutVersion={mapLayoutVersion}
@@ -1416,13 +1456,13 @@ export default function RoutesScreen() {
                 >
                   <View style={[styles.panelHeader, { borderBottomColor: theme.BORDER }]}> 
                     <View style={styles.stopsHeaderRow}>
-                      <Text style={[styles.panelTitle, { color: theme.TEXT }]}> 
-                        {selectedRoute
-                          ? `Stops • ${selectedRoute.shortName}`
-                          : isFavoritesMode
-                            ? 'Stops • Favorites'
-                            : 'Stops'}
-                      </Text>
+                      <View style={styles.panelTitleMetaRow}>
+                        <Text style={[styles.panelTitle, { color: theme.TEXT }]}> 
+                          {stopsPanelTitle}
+                        </Text>
+                        <Text style={[styles.panelMetaText, { color: theme.TEXT_SECONDARY }]}>•</Text>
+                        <Text style={[styles.panelMetaText, { color: theme.TEXT_SECONDARY }]}>{stopsMenuCount}</Text>
+                      </View>
                       <View style={styles.stopsHeaderActions}>
                         {selectedRoute ? (
                           <Pressable
@@ -1484,7 +1524,11 @@ export default function RoutesScreen() {
                 >
                   <View style={[styles.panelHeader, { borderBottomColor: theme.BORDER }]}> 
                     <View style={styles.routesHeaderRow}>
-                      <Text style={[styles.panelTitle, { color: theme.TEXT }]}>Routes</Text>
+                      <View style={styles.panelTitleMetaRow}>
+                        <Text style={[styles.panelTitle, { color: theme.TEXT }]}>Routes</Text>
+                        <Text style={[styles.panelMetaText, { color: theme.TEXT_SECONDARY }]}>•</Text>
+                        <Text style={[styles.panelMetaText, { color: theme.TEXT_SECONDARY }]}>{routesMenuCount}</Text>
+                      </View>
                       <Pressable
                         onPress={toggleFavoritesView}
                         style={[
@@ -1502,7 +1546,6 @@ export default function RoutesScreen() {
                         </Text>
                       </Pressable>
                     </View>
-                    <Text style={[styles.panelSubtitle, { color: theme.TEXT_SECONDARY }]}>Tap a route to focus the map</Text>
                     {showNoActiveBusesNotice ? (
                       <View
                         style={[
@@ -1679,6 +1722,25 @@ const styles = StyleSheet.create({
   stopNameCell: {
     flex: 1,
   },
+  stopNameLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minWidth: 0,
+  },
+  stopNameText: {
+    flexShrink: 1,
+  },
+  stopCodePill: {
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  stopCodePillText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
   currentBusStopText: {
     marginTop: 2,
     fontSize: 11,
@@ -1696,6 +1758,7 @@ const styles = StyleSheet.create({
   },
   stopRowText: {
     fontSize: 13,
+    fontWeight: '600',
   },
   stopTimesRow: {
     flexDirection: 'row',
@@ -1842,6 +1905,16 @@ const styles = StyleSheet.create({
   panelTitle: {
     fontSize: 18,
     fontWeight: '700',
+  },
+  panelTitleMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minWidth: 0,
+  },
+  panelMetaText: {
+    fontSize: 18,
+    fontWeight: '600',
   },
   panelSubtitle: {
     marginTop: 2,
