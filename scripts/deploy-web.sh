@@ -34,6 +34,23 @@ require_cmd() {
   fi
 }
 
+read_env_value_from_file() {
+  local key="$1"
+  local file="$2"
+
+  if [[ ! -f "${file}" ]]; then
+    return 0
+  fi
+
+  bash -c '
+    set -a
+    # shellcheck disable=SC1090
+    source "$1" >/dev/null 2>&1 || exit 0
+    var_name="$2"
+    printf "%s" "${!var_name:-}"
+  ' _ "${file}" "${key}"
+}
+
 load_existing_telemetry_env() {
   if [[ -f "${TELEMETRY_ENV_FILE}" ]]; then
     set -a
@@ -46,6 +63,19 @@ load_existing_telemetry_env() {
 
 write_telemetry_env() {
   install -d -m 750 "${TELEMETRY_ENV_DIR}"
+
+  local existing_dashboard_user
+  local existing_dashboard_password
+  existing_dashboard_user="$(read_env_value_from_file TELEMETRY_DASHBOARD_USER "${TELEMETRY_ENV_FILE}")"
+  existing_dashboard_password="$(read_env_value_from_file TELEMETRY_DASHBOARD_PASSWORD "${TELEMETRY_ENV_FILE}")"
+
+  if [[ -z "${TELEMETRY_DASHBOARD_USER:-}" ]] && [[ -n "${existing_dashboard_user}" ]]; then
+    TELEMETRY_DASHBOARD_USER="${existing_dashboard_user}"
+  fi
+
+  if [[ -z "${TELEMETRY_DASHBOARD_PASSWORD:-}" ]] && [[ -n "${existing_dashboard_password}" ]]; then
+    TELEMETRY_DASHBOARD_PASSWORD="${existing_dashboard_password}"
+  fi
 
   if [[ -z "${TELEMETRY_DASHBOARD_USER:-}" ]]; then
     TELEMETRY_DASHBOARD_USER="admin"
