@@ -34,7 +34,7 @@ require_cmd() {
   fi
 }
 
-read_env_value_from_file() {
+read_env_assignment_raw() {
   local key="$1"
   local file="$2"
 
@@ -42,13 +42,7 @@ read_env_value_from_file() {
     return 0
   fi
 
-  bash -c '
-    set -a
-    # shellcheck disable=SC1090
-    source "$1" >/dev/null 2>&1 || exit 0
-    var_name="$2"
-    printf "%s" "${!var_name:-}"
-  ' _ "${file}" "${key}"
+  sed -n "s/^${key}=//p" "${file}" | tail -n 1
 }
 
 load_existing_telemetry_env() {
@@ -64,24 +58,27 @@ load_existing_telemetry_env() {
 write_telemetry_env() {
   install -d -m 750 "${TELEMETRY_ENV_DIR}"
 
-  local existing_dashboard_user
-  local existing_dashboard_password
-  existing_dashboard_user="$(read_env_value_from_file TELEMETRY_DASHBOARD_USER "${TELEMETRY_ENV_FILE}")"
-  existing_dashboard_password="$(read_env_value_from_file TELEMETRY_DASHBOARD_PASSWORD "${TELEMETRY_ENV_FILE}")"
+  local existing_dashboard_user_raw
+  local existing_dashboard_password_raw
+  existing_dashboard_user_raw="$(read_env_assignment_raw TELEMETRY_DASHBOARD_USER "${TELEMETRY_ENV_FILE}")"
+  existing_dashboard_password_raw="$(read_env_assignment_raw TELEMETRY_DASHBOARD_PASSWORD "${TELEMETRY_ENV_FILE}")"
 
-  if [[ -z "${TELEMETRY_DASHBOARD_USER:-}" ]] && [[ -n "${existing_dashboard_user}" ]]; then
-    TELEMETRY_DASHBOARD_USER="${existing_dashboard_user}"
+  local preserve_dashboard_user_raw=""
+  local preserve_dashboard_password_raw=""
+
+  if [[ -z "${TELEMETRY_DASHBOARD_USER:-}" ]] && [[ -n "${existing_dashboard_user_raw}" ]]; then
+    preserve_dashboard_user_raw="${existing_dashboard_user_raw}"
   fi
 
-  if [[ -z "${TELEMETRY_DASHBOARD_PASSWORD:-}" ]] && [[ -n "${existing_dashboard_password}" ]]; then
-    TELEMETRY_DASHBOARD_PASSWORD="${existing_dashboard_password}"
+  if [[ -z "${TELEMETRY_DASHBOARD_PASSWORD:-}" ]] && [[ -n "${existing_dashboard_password_raw}" ]]; then
+    preserve_dashboard_password_raw="${existing_dashboard_password_raw}"
   fi
 
-  if [[ -z "${TELEMETRY_DASHBOARD_USER:-}" ]]; then
+  if [[ -z "${TELEMETRY_DASHBOARD_USER:-}" ]] && [[ -z "${preserve_dashboard_user_raw}" ]]; then
     TELEMETRY_DASHBOARD_USER="admin"
   fi
 
-  if [[ -z "${TELEMETRY_DASHBOARD_PASSWORD:-}" ]]; then
+  if [[ -z "${TELEMETRY_DASHBOARD_PASSWORD:-}" ]] && [[ -z "${preserve_dashboard_password_raw}" ]]; then
     TELEMETRY_DASHBOARD_PASSWORD="$(openssl rand -base64 24 | tr -d '\n')"
     log "Generated telemetry dashboard password and wrote it to ${TELEMETRY_ENV_FILE}"
   fi
@@ -94,8 +91,16 @@ write_telemetry_env() {
     printf 'TELEMETRY_AGG_RETENTION_DAYS=%q\n' "${TELEMETRY_AGG_RETENTION_DAYS}"
     printf 'TELEMETRY_DASHBOARD_PATH=%q\n' "${TELEMETRY_DASHBOARD_PATH}"
     printf 'TELEMETRY_DASHBOARD_REALM=%q\n' "${TELEMETRY_DASHBOARD_REALM}"
-    printf 'TELEMETRY_DASHBOARD_USER=%q\n' "${TELEMETRY_DASHBOARD_USER}"
-    printf 'TELEMETRY_DASHBOARD_PASSWORD=%q\n' "${TELEMETRY_DASHBOARD_PASSWORD}"
+    if [[ -n "${preserve_dashboard_user_raw}" ]]; then
+      printf 'TELEMETRY_DASHBOARD_USER=%s\n' "${preserve_dashboard_user_raw}"
+    else
+      printf 'TELEMETRY_DASHBOARD_USER=%q\n' "${TELEMETRY_DASHBOARD_USER}"
+    fi
+    if [[ -n "${preserve_dashboard_password_raw}" ]]; then
+      printf 'TELEMETRY_DASHBOARD_PASSWORD=%s\n' "${preserve_dashboard_password_raw}"
+    else
+      printf 'TELEMETRY_DASHBOARD_PASSWORD=%q\n' "${TELEMETRY_DASHBOARD_PASSWORD}"
+    fi
     printf 'TELEMETRY_DASHBOARD_RATE_LIMIT_WINDOW_MS=%q\n' "${TELEMETRY_DASHBOARD_RATE_LIMIT_WINDOW_MS}"
     printf 'TELEMETRY_DASHBOARD_RATE_LIMIT_MAX_REQUESTS=%q\n' "${TELEMETRY_DASHBOARD_RATE_LIMIT_MAX_REQUESTS}"
     printf 'TELEMETRY_DASHBOARD_AUTH_FAIL_WINDOW_MS=%q\n' "${TELEMETRY_DASHBOARD_AUTH_FAIL_WINDOW_MS}"
