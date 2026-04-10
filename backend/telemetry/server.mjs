@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -13,14 +14,17 @@ const AGG_RETENTION_DAYS = Number(process.env.TELEMETRY_AGG_RETENTION_DAYS || 0)
 const BODY_LIMIT_BYTES = 1024 * 1024;
 const ACTIVE_SESSION_WINDOW_MS = 2 * 60 * 1000;
 const DASHBOARD_PATH = process.env.TELEMETRY_DASHBOARD_PATH?.trim() || '/telemetry/dev-dashboard';
+const DASHBOARD_REALM = process.env.TELEMETRY_DASHBOARD_REALM?.trim() || 'BetterBT Telemetry Admin';
 const DASHBOARD_USER = process.env.TELEMETRY_DASHBOARD_USER?.trim() || '';
 const DASHBOARD_PASSWORD = process.env.TELEMETRY_DASHBOARD_PASSWORD || '';
 const DASHBOARD_RATE_LIMIT_WINDOW_MS = Number(process.env.TELEMETRY_DASHBOARD_RATE_LIMIT_WINDOW_MS || 60_000);
 const DASHBOARD_RATE_LIMIT_MAX_REQUESTS = Number(process.env.TELEMETRY_DASHBOARD_RATE_LIMIT_MAX_REQUESTS || 120);
 const DASHBOARD_AUTH_FAIL_WINDOW_MS = Number(process.env.TELEMETRY_DASHBOARD_AUTH_FAIL_WINDOW_MS || 600_000);
 const DASHBOARD_AUTH_FAIL_MAX_ATTEMPTS = Number(process.env.TELEMETRY_DASHBOARD_AUTH_FAIL_MAX_ATTEMPTS || 20);
+const DASHBOARD_API_TOKEN_TTL_MS = Number(process.env.TELEMETRY_DASHBOARD_API_TOKEN_TTL_MS || 10 * 60 * 1000);
 const dashboardRequestLog = new Map();
 const dashboardAuthFailureLog = new Map();
+const dashboardApiTokenStore = new Map();
 
 const dataDir = process.env.TELEMETRY_DATA_DIR?.trim() || path.join(__dirname, 'data');
 const rawEventsFile = path.join(dataDir, 'events.ndjson');
@@ -70,7 +74,7 @@ function writeAggregates(aggregates) {
   fs.writeFileSync(aggregateFile, JSON.stringify(aggregates, null, 2), 'utf8');
 }
 
-function parseJsonBody(req) {
+function parseRequestBody(req) {
   return new Promise((resolve, reject) => {
     let body = '';
 
@@ -84,20 +88,38 @@ function parseJsonBody(req) {
     });
 
     req.on('end', () => {
-      if (!body) {
-        resolve({});
-        return;
-      }
-
-      try {
-        resolve(JSON.parse(body));
-      } catch (error) {
-        reject(error);
-      }
+      resolve(body);
     });
 
     req.on('error', reject);
   });
+}
+
+async function parseJsonBody(req) {
+  const body = await parseRequestBody(req);
+  if (!body) return {};
+  return JSON.parse(body);
+}
+
+async function parseDashboardLoginBody(req) {
+  const contentType = String(req.headers['content-type'] || '').toLowerCase();
+  const raw = await parseRequestBody(req);
+
+  if (!raw) return { username: '', password: '' };
+
+  if (contentType.includes('application/json')) {
+    const parsed = JSON.parse(raw);
+    return {
+      username: String(parsed.username || '').trim(),
+      password: String(parsed.password || ''),
+    };
+  }
+
+  const form = new URLSearchParams(raw);
+  return {
+    username: String(form.get('username') || '').trim(),
+    password: String(form.get('password') || ''),
+  };
 }
 
 function cleanScalar(value) {
@@ -246,25 +268,58 @@ function isDashboardAuthConfigured() {
   return Boolean(DASHBOARD_USER) && Boolean(DASHBOARD_PASSWORD);
 }
 
-function parseBasicAuthHeader(headerValue) {
-  if (!headerValue || !headerValue.startsWith('Basic ')) return null;
+function createDashboardApiToken() {
+  const token = crypto.randomBytes(32).toString('base64url');
+  dashboardApiTokenStore.set(token, {
+    expiresAt: Date.now() + DASHBOARD_API_TOKEN_TTL_MS,
+  });
+  return token;
+}
 
-  try {
-    const encoded = headerValue.slice('Basic '.length).trim();
-    const decoded = Buffer.from(encoded, 'base64').toString('utf8');
-    const separatorIndex = decoded.indexOf(':');
-    if (separatorIndex < 0) return null;
-
-    return {
-      user: decoded.slice(0, separatorIndex),
-      password: decoded.slice(separatorIndex + 1),
-    };
-  } catch {
-    return null;
+function pruneDashboardApiTokens() {
+  const now = Date.now();
+  for (const [token, meta] of dashboardApiTokenStore.entries()) {
+    if (!meta || !Number.isFinite(meta.expiresAt) || meta.expiresAt <= now) {
+      dashboardApiTokenStore.delete(token);
+    }
   }
 }
 
-function authorizeDashboardRequest(req, res) {
+function readDashboardApiToken(req, requestUrl) {
+  const fromHeader = String(req.headers['x-dashboard-api-token'] || '').trim();
+  if (fromHeader) return fromHeader;
+
+  const fromQuery = String(requestUrl.searchParams.get('token') || '').trim();
+  if (fromQuery) return fromQuery;
+
+  return '';
+}
+
+function authorizeDashboardApiRequest(req, res, requestUrl) {
+  if (!isDashboardAuthConfigured()) {
+    sendJson(res, 404, { error: 'not found' });
+    return false;
+  }
+
+  pruneDashboardApiTokens();
+
+  const token = readDashboardApiToken(req, requestUrl);
+  if (!token) {
+    sendJson(res, 401, { error: 'authentication required' });
+    return false;
+  }
+
+  const tokenMeta = dashboardApiTokenStore.get(token);
+  if (!tokenMeta || tokenMeta.expiresAt <= Date.now()) {
+    dashboardApiTokenStore.delete(token);
+    sendJson(res, 401, { error: 'authentication required' });
+    return false;
+  }
+
+  return true;
+}
+
+function authorizeDashboardLoginAttempt(req, res, username, password) {
   if (!isDashboardAuthConfigured()) {
     sendJson(res, 404, { error: 'not found' });
     return false;
@@ -272,36 +327,26 @@ function authorizeDashboardRequest(req, res) {
 
   const authLock = isAuthFailureLocked(req);
   if (authLock.locked) {
-    res.writeHead(429, {
-      'Content-Type': 'application/json; charset=utf-8',
-      'Retry-After': String(authLock.retryAfterSeconds),
-    });
-    res.end(
-      JSON.stringify({
-        error: 'too many authentication failures',
-        retryAfterSeconds: authLock.retryAfterSeconds,
-      })
+    sendHtml(
+      res,
+      429,
+      getDashboardLoginHtml(
+        DASHBOARD_PATH,
+        `Too many failed attempts. Retry in ${authLock.retryAfterSeconds} seconds.`
+      )
     );
     return false;
   }
 
-  const credentials = parseBasicAuthHeader(req.headers.authorization);
-  if (!credentials) {
+  if (!username || !password) {
     registerAuthFailure(req);
-    res.writeHead(401, {
-      'WWW-Authenticate': 'Basic realm="BetterBT Telemetry Dashboard"',
-      'Content-Type': 'application/json; charset=utf-8',
-    });
-    res.end(JSON.stringify({ error: 'authentication required' }));
+    sendHtml(res, 401, getDashboardLoginHtml(DASHBOARD_PATH, 'Missing username or password.'));
     return false;
   }
 
-  if (credentials.user !== DASHBOARD_USER || credentials.password !== DASHBOARD_PASSWORD) {
+  if (username !== DASHBOARD_USER || password !== DASHBOARD_PASSWORD) {
     registerAuthFailure(req);
-    res.writeHead(403, {
-      'Content-Type': 'application/json; charset=utf-8',
-    });
-    res.end(JSON.stringify({ error: 'forbidden' }));
+    sendHtml(res, 401, getDashboardLoginHtml(DASHBOARD_PATH, 'Invalid credentials.'));
     return false;
   }
 
@@ -380,7 +425,48 @@ function sendHtml(res, status, html) {
   res.end(html);
 }
 
-function getDashboardHtml(dashboardPath) {
+function getDashboardLoginHtml(dashboardPath, message = '') {
+  const escapedMessage = message
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${DASHBOARD_REALM}</title>
+  <style>
+    body { font-family: ui-sans-serif, -apple-system, Segoe UI, sans-serif; margin: 0; background: #0b1220; color: #e2e8f0; }
+    .wrap { min-height: 100vh; display: grid; place-items: center; padding: 20px; }
+    .panel { width: 100%; max-width: 420px; background: #111827; border: 1px solid #334155; border-radius: 12px; padding: 20px; }
+    h1 { margin: 0 0 6px; font-size: 20px; }
+    p { margin: 0 0 14px; color: #94a3b8; }
+    label { display: block; margin: 10px 0 6px; color: #cbd5e1; font-size: 13px; }
+    input { width: 100%; box-sizing: border-box; background: #0b1220; color: #e2e8f0; border: 1px solid #334155; border-radius: 8px; padding: 10px; }
+    button { margin-top: 14px; width: 100%; border: 1px solid #334155; border-radius: 8px; background: #1d4ed8; color: #fff; padding: 10px; cursor: pointer; }
+    .msg { margin-top: 12px; color: #fca5a5; min-height: 18px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <form class="panel" method="post" action="${dashboardPath}/login" autocomplete="off">
+      <h1>Telemetry Dashboard</h1>
+      <p>Enter dashboard credentials.</p>
+      <label for="username">Username</label>
+      <input id="username" name="username" type="text" required />
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" required />
+      <button type="submit">Sign In</button>
+      <div class="msg">${escapedMessage}</div>
+    </form>
+  </div>
+</body>
+</html>`;
+}
+
+function getDashboardHtml(dashboardPath, apiToken) {
   const apiBase = `${dashboardPath}/api`;
 
   return `<!doctype html>
@@ -451,14 +537,36 @@ function getDashboardHtml(dashboardPath) {
 
   <script>
     const apiBase = '${apiBase}';
+    const apiToken = '${apiToken}';
     let offset = 0;
+
+    function authHeaders() {
+      return {
+        'X-Dashboard-Api-Token': apiToken,
+      };
+    }
+
+    function logoutOnLeave() {
+      try {
+        navigator.sendBeacon('${dashboardPath}/logout?token=' + encodeURIComponent(apiToken), '');
+      } catch {
+        // ignore
+      }
+    }
+
+    window.addEventListener('beforeunload', logoutOnLeave);
+    window.addEventListener('pagehide', logoutOnLeave);
 
     function card(label, value) {
       return '<div class="card"><div class="muted">' + label + '</div><div>' + value + '</div></div>';
     }
 
     async function loadSummary() {
-      const res = await fetch(apiBase + '/summary');
+      const res = await fetch(apiBase + '/summary', { headers: authHeaders(), cache: 'no-store' });
+      if (res.status === 401) {
+        location.reload();
+        return;
+      }
       const data = await res.json();
       const el = document.getElementById('summary');
       el.innerHTML = [
@@ -483,7 +591,11 @@ function getDashboardHtml(dashboardPath) {
         to: document.getElementById('to').value,
       });
 
-      const res = await fetch(apiBase + '/raw?' + params.toString());
+      const res = await fetch(apiBase + '/raw?' + params.toString(), { headers: authHeaders(), cache: 'no-store' });
+      if (res.status === 401) {
+        location.reload();
+        return;
+      }
       const data = await res.json();
 
       const rows = document.getElementById('rows');
@@ -523,6 +635,11 @@ function getDashboardHtml(dashboardPath) {
       offset = offset + pageSize;
       loadRaw();
     });
+
+    const exportLink = document.querySelector('a[href$="/raw/export"]');
+    if (exportLink) {
+      exportLink.href = apiBase + '/raw/export?token=' + encodeURIComponent(apiToken);
+    }
 
     loadSummary();
     loadRaw();
@@ -667,17 +784,47 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (pathname === DASHBOARD_PATH || pathname.startsWith(`${DASHBOARD_PATH}/`)) {
+    res.setHeader('Cache-Control', 'no-store, private, max-age=0');
+    res.setHeader('CDN-Cache-Control', 'no-store');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Vary', 'X-Dashboard-Api-Token');
+
     if (!rateLimitDashboardRequest(req, res)) return;
   }
 
   if (req.method === 'GET' && pathname === DASHBOARD_PATH) {
-    if (!authorizeDashboardRequest(req, res)) return;
-    sendHtml(res, 200, getDashboardHtml(DASHBOARD_PATH));
+    if (!isDashboardAuthConfigured()) {
+      sendJson(res, 404, { error: 'not found' });
+      return;
+    }
+
+    sendHtml(res, 200, getDashboardLoginHtml(DASHBOARD_PATH));
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === `${DASHBOARD_PATH}/login`) {
+    try {
+      const { username, password } = await parseDashboardLoginBody(req);
+      if (!authorizeDashboardLoginAttempt(req, res, username, password)) return;
+
+      const apiToken = createDashboardApiToken();
+      sendHtml(res, 200, getDashboardHtml(DASHBOARD_PATH, apiToken));
+    } catch {
+      sendHtml(res, 400, getDashboardLoginHtml(DASHBOARD_PATH, 'Invalid login request.'));
+    }
+    return;
+  }
+
+  if (req.method === 'POST' && pathname === `${DASHBOARD_PATH}/logout`) {
+    const token = readDashboardApiToken(req, requestUrl);
+    if (token) dashboardApiTokenStore.delete(token);
+    sendJson(res, 200, { ok: true });
     return;
   }
 
   if (req.method === 'GET' && pathname === `${DASHBOARD_PATH}/api/summary`) {
-    if (!authorizeDashboardRequest(req, res)) return;
+    if (!authorizeDashboardApiRequest(req, res, requestUrl)) return;
 
     const aggregates = readAggregates();
     applyRetention(aggregates);
@@ -704,13 +851,13 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === 'GET' && pathname === `${DASHBOARD_PATH}/api/raw`) {
-    if (!authorizeDashboardRequest(req, res)) return;
+    if (!authorizeDashboardApiRequest(req, res, requestUrl)) return;
     sendJson(res, 200, buildRawEventsResponse(requestUrl.searchParams));
     return;
   }
 
   if (req.method === 'GET' && pathname === `${DASHBOARD_PATH}/api/raw/export`) {
-    if (!authorizeDashboardRequest(req, res)) return;
+    if (!authorizeDashboardApiRequest(req, res, requestUrl)) return;
 
     let raw = '';
     try {

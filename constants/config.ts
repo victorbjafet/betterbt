@@ -13,7 +13,7 @@ export const API_ENDPOINTS = {
 };
 
 // Version format: YYYY.MM.DD.N where N starts at 0 each day and increments per same-day release.
-export const APP_VERSION_DATE = '2026.04.09.1';
+export const APP_VERSION_DATE = '2026.04.10.0';
 export const APP_RELEASE_CHANNEL = 'alpha';
 export const APP_VERSION_LABEL = `(${APP_RELEASE_CHANNEL}) ${APP_VERSION_DATE}`;
 

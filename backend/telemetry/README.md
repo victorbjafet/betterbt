@@ -12,6 +12,8 @@ It is intentionally separate from the BT API services.
 
 Developer-only endpoints (not linked publicly):
 - `GET /telemetry/dev-dashboard` (HTML dashboard)
+- `POST /telemetry/dev-dashboard/login` (credential form submit)
+- `POST /telemetry/dev-dashboard/logout` (invalidate dashboard token)
 - `GET /telemetry/dev-dashboard/api/summary`
 - `GET /telemetry/dev-dashboard/api/raw`
 - `GET /telemetry/dev-dashboard/api/raw/export`
@@ -48,7 +50,8 @@ Telemetry sending is disabled in development by default in the app client.
 
 ## Developer Dashboard Auth
 
-Dashboard access is protected using HTTP Basic Auth backed by environment variables.
+Dashboard access uses a credential form and short-lived server-side API tokens (in-memory).
+No auth cookies are issued and dashboard responses are marked no-store.
 
 Required server environment variables:
 
@@ -61,6 +64,13 @@ Optional:
 
 ```bash
 TELEMETRY_DASHBOARD_PATH=/telemetry/dev-dashboard
+TELEMETRY_DASHBOARD_REALM=BetterBT Telemetry Admin
+```
+
+Optional token lifetime (milliseconds):
+
+```bash
+TELEMETRY_DASHBOARD_API_TOKEN_TTL_MS=600000
 ```
 
 Dashboard rate limit and auth-throttle controls:
