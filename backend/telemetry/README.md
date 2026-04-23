@@ -11,10 +11,12 @@ It is intentionally separate from the BT API services.
 - `GET /telemetry/aggregates` (daily aggregate metrics)
 
 Developer-only endpoints (not linked publicly):
+
 - `GET /telemetry/dev-dashboard` (HTML dashboard)
 - `POST /telemetry/dev-dashboard/login` (credential form submit)
 - `POST /telemetry/dev-dashboard/logout` (invalidate dashboard token)
 - `GET /telemetry/dev-dashboard/api/summary`
+- `GET /telemetry/dev-dashboard/api/sessions` (session list + per-session timeline via `sessionId` query)
 - `GET /telemetry/dev-dashboard/api/raw`
 - `GET /telemetry/dev-dashboard/api/raw/export`
 
@@ -33,9 +35,11 @@ node backend/telemetry/server.mjs
 ```
 
 Server default:
+
 - `http://localhost:4318`
 
 Optional bind host override:
+
 - `TELEMETRY_BIND_HOST=127.0.0.1`
 
 ## App Configuration
@@ -90,14 +94,17 @@ If auth variables are not set, dashboard endpoints return `404`.
 ## Retention
 
 Default retention windows:
+
 - Raw event log: permanent
 - Daily aggregate summary: permanent
 
 Optional overrides:
+
 - `TELEMETRY_RAW_RETENTION_DAYS`
 - `TELEMETRY_AGG_RETENTION_DAYS`
 
 Optional data directory override (recommended for production persistence):
+
 - `TELEMETRY_DATA_DIR=/var/lib/betterbt/telemetry`
 
 Set either override to a positive integer (days) to enable pruning.

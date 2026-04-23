@@ -21,11 +21,15 @@ const INITIAL_REGION = {
   longitudeDelta: 0.05,
 };
 
+const EMPTY_STOPS: Stop[] = [];
+const EMPTY_ROUTE_PATHS: TransitMapViewProps['routePaths'] = [];
+const EMPTY_STOP_DEPARTURES_BY_ID: TransitMapViewProps['stopDeparturesById'] = {};
+
 export default function TransitMapView({
   buses,
-  stops = [],
-  stopDeparturesById = {},
-  routePaths = [],
+  stops,
+  stopDeparturesById,
+  routePaths,
   predictionRoutePaths,
   selectedRouteId,
   resetViewToken = 0,
@@ -63,6 +67,10 @@ export default function TransitMapView({
   const lastHandledResetToken = useRef(-1);
   const lastHandledViewportToken = useRef('');
   const lastFocusedBusPayloadTimestamp = useRef<number | null>(null);
+  const resolvedStops = stops ?? EMPTY_STOPS;
+  const resolvedRoutePaths = routePaths ?? EMPTY_ROUTE_PATHS;
+  const resolvedStopDeparturesById = stopDeparturesById ?? EMPTY_STOP_DEPARTURES_BY_ID;
+  const resolvedPredictionRoutePaths = predictionRoutePaths ?? resolvedRoutePaths;
 
   useEffect(() => {
     const now = Date.now();
@@ -82,9 +90,9 @@ export default function TransitMapView({
 
       const seeded = buses.map((bus) => {
         const realPosition = { latitude: bus.latitude, longitude: bus.longitude };
-        const predictionPaths = (predictionRoutePaths ?? routePaths).filter((path) => path.routeId === bus.routeId);
+        const predictionPaths = resolvedPredictionRoutePaths.filter((path) => path.routeId === bus.routeId);
         const predictedEnd = predictBusCoordinate(bus, now, predictionPaths, {
-          stops,
+          stops: resolvedStops,
           horizonSeconds: REFRESH_INTERVALS.VEHICLES / 1000,
         });
 
@@ -126,7 +134,7 @@ export default function TransitMapView({
 
       return seeded;
     });
-  }, [buses, predictionRoutePaths, routePaths, stops]);
+  }, [buses, resolvedPredictionRoutePaths, resolvedStops]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -183,9 +191,9 @@ export default function TransitMapView({
   const filteredStops = useMemo(
     () =>
       selectedRouteId
-        ? stops.filter((stop) => stop.routes.includes(selectedRouteId))
-        : stops,
-    [selectedRouteId, stops]
+        ? resolvedStops.filter((stop) => stop.routes.includes(selectedRouteId))
+        : resolvedStops,
+    [resolvedStops, selectedRouteId]
   );
   const visibleStops = filteredStops;
 
@@ -245,16 +253,16 @@ export default function TransitMapView({
 
     didAutoFitAllBuses.current = false;
 
-    const routeFocusKey = `${selectedRouteId}:${routePaths.map((path) => path.id).join('|')}`;
+    const routeFocusKey = `${selectedRouteId}:${resolvedRoutePaths.map((path) => path.id).join('|')}`;
     if (lastAutoFocusedRouteKey.current === routeFocusKey) return;
 
-    const routeCoordinates = routePaths.flatMap((path) => path.coordinates);
+    const routeCoordinates = resolvedRoutePaths.flatMap((path) => path.coordinates);
     const busCoordinates = filteredBuses.map((bus) => ({ latitude: bus.latitude, longitude: bus.longitude }));
     const focusCoordinates = routeCoordinates.length > 0 ? routeCoordinates : busCoordinates;
 
     fitToBusCoordinates(focusCoordinates);
     lastAutoFocusedRouteKey.current = routeFocusKey;
-  }, [filteredBuses, isMapReady, routePaths, selectedRouteId]);
+  }, [filteredBuses, isMapReady, resolvedRoutePaths, selectedRouteId]);
 
   useEffect(() => {
     if (!focusedDisplayBus || !isMapReady) return;
@@ -370,7 +378,7 @@ export default function TransitMapView({
         500
       );
     } else if (selectedRouteId) {
-      const routeCoordinates = routePaths.flatMap((path) => path.coordinates);
+      const routeCoordinates = resolvedRoutePaths.flatMap((path) => path.coordinates);
       const busCoordinates = filteredBuses.map((bus) => ({ latitude: bus.latitude, longitude: bus.longitude }));
       const focusCoordinates = routeCoordinates.length > 0 ? routeCoordinates : busCoordinates;
 
@@ -390,7 +398,7 @@ export default function TransitMapView({
     }
 
     lastHandledViewportToken.current = viewportToken;
-  }, [filteredBuses, filteredStops, focusedDisplayBus, focusedStop, fullscreenViewToken, isMapReady, layoutVersion, routePaths, selectedRouteId]);
+  }, [filteredBuses, filteredStops, focusedDisplayBus, focusedStop, fullscreenViewToken, isMapReady, layoutVersion, resolvedRoutePaths, selectedRouteId]);
 
   return (
     <View style={styles.container}>
@@ -417,7 +425,7 @@ export default function TransitMapView({
           onMapPress?.();
         }}
       >
-        {routePaths.map((path) => (
+        {resolvedRoutePaths.map((path) => (
           <Polyline
             key={path.id}
             coordinates={path.coordinates}
@@ -477,8 +485,8 @@ export default function TransitMapView({
             }}
             title={stop.name}
             description={
-              (stopDeparturesById[stop.id] ?? []).length > 0
-                ? `Next departures:\n${(stopDeparturesById[stop.id] ?? []).join('\n')}`
+              (resolvedStopDeparturesById[stop.id] ?? []).length > 0
+                ? `Next departures:\n${(resolvedStopDeparturesById[stop.id] ?? []).join('\n')}`
                 : undefined
             }
             onPress={(event) => {

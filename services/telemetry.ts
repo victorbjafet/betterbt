@@ -1,9 +1,11 @@
-import Constants from 'expo-constants';
-import { AppState, Platform } from 'react-native';
+import { AppState, Platform } from "react-native";
 
-import { TELEMETRY_CONFIG } from '@/constants/config';
+import { APP_VERSION_LABEL, TELEMETRY_CONFIG } from "@/constants/config";
 
-type TelemetryPayload = Record<string, string | number | boolean | null | undefined>;
+type TelemetryPayload = Record<
+  string,
+  string | number | boolean | null | undefined
+>;
 
 type TelemetryEvent = {
   event: string;
@@ -11,11 +13,8 @@ type TelemetryEvent = {
   payload?: TelemetryPayload;
 };
 
-const isDev = typeof __DEV__ !== 'undefined' ? __DEV__ : false;
-const appVersion =
-  Constants.expoConfig?.version ??
-  Constants.manifest2?.extra?.expoClient?.version ??
-  'unknown';
+const isDev = typeof __DEV__ !== "undefined" ? __DEV__ : false;
+const appVersion = APP_VERSION_LABEL;
 const telemetryEndpoint = TELEMETRY_CONFIG.ENDPOINT;
 const telemetryEnabled =
   Boolean(telemetryEndpoint) && (!isDev || TELEMETRY_CONFIG.ENABLE_IN_DEV);
@@ -42,7 +41,7 @@ let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
 function emit(event: TelemetryEvent) {
   if (isDev && !telemetryEnabled) {
-    console.log('[telemetry]', event);
+    console.log("[telemetry]", event);
   }
 }
 
@@ -52,7 +51,7 @@ const getSessionUptimeSeconds = () =>
 const withDefaultPayload = (payload?: TelemetryPayload): TelemetryPayload => ({
   appVersion,
   platform: Platform.OS,
-  platformVersion: String(Platform.Version ?? 'unknown'),
+  platformVersion: String(Platform.Version ?? "unknown"),
   sessionId,
   ...payload,
 });
@@ -76,7 +75,10 @@ const enqueueEvent = (event: TelemetryEvent) => {
 const scheduleRetry = () => {
   if (retryTimer) return;
 
-  const delay = Math.min(maxRetryDelayMs, 1000 * 2 ** Math.max(0, retryAttempt - 1));
+  const delay = Math.min(
+    maxRetryDelayMs,
+    1000 * 2 ** Math.max(0, retryAttempt - 1),
+  );
   retryTimer = setTimeout(() => {
     retryTimer = null;
     void flushQueue();
@@ -99,9 +101,9 @@ const flushQueue = async () => {
 
   try {
     const response = await fetch(telemetryEndpoint, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         events: batch,
@@ -109,7 +111,9 @@ const flushQueue = async () => {
     });
 
     if (!response.ok) {
-      throw new Error(`Telemetry ingestion failed with HTTP ${response.status}`);
+      throw new Error(
+        `Telemetry ingestion failed with HTTP ${response.status}`,
+      );
     }
 
     queue = queue.slice(batch.length);
@@ -121,7 +125,7 @@ const flushQueue = async () => {
   } catch (error) {
     retryAttempt += 1;
     emit({
-      event: 'telemetry.flush_failed',
+      event: "telemetry.flush_failed",
       timestamp: new Date().toISOString(),
       payload: withDefaultPayload({
         error: error instanceof Error ? error.message : String(error),
@@ -154,7 +158,11 @@ export function trackEvent(event: string, payload?: TelemetryPayload) {
   enqueueEvent(telemetryEvent);
 }
 
-export function logError(code: string, error: unknown, context?: TelemetryPayload) {
+export function logError(
+  code: string,
+  error: unknown,
+  context?: TelemetryPayload,
+) {
   const message = error instanceof Error ? error.message : String(error);
   const stack = error instanceof Error ? error.stack : undefined;
 
@@ -166,7 +174,7 @@ export function logError(code: string, error: unknown, context?: TelemetryPayloa
 }
 
 export function trackScreenView(screen: string, payload?: TelemetryPayload) {
-  trackEvent('screen.view', {
+  trackEvent("screen.view", {
     screen,
     ...payload,
   });
@@ -176,30 +184,30 @@ export function initializeTelemetry() {
   if (hasInitialized) return;
   hasInitialized = true;
 
-  trackEvent('app.session_started', {
+  trackEvent("app.session_started", {
     visitedAt: new Date(sessionStartedAtMs).toISOString(),
   });
 
   heartbeatTimer = setInterval(() => {
-    trackEvent('app.session_heartbeat', {
+    trackEvent("app.session_heartbeat", {
       uptimeSeconds: getSessionUptimeSeconds(),
     });
   }, heartbeatIntervalMs);
 
-  AppState.addEventListener('change', (nextState) => {
-    trackEvent('app.lifecycle_state_changed', {
+  AppState.addEventListener("change", (nextState) => {
+    trackEvent("app.lifecycle_state_changed", {
       state: nextState,
       uptimeSeconds: getSessionUptimeSeconds(),
     });
 
-    if (nextState === 'background') {
+    if (nextState === "background") {
       void flushTelemetry();
     }
   });
 
-  if (typeof globalThis.addEventListener === 'function') {
-    globalThis.addEventListener('pagehide', () => {
-      trackEvent('app.session_ended', {
+  if (typeof globalThis.addEventListener === "function") {
+    globalThis.addEventListener("pagehide", () => {
+      trackEvent("app.session_ended", {
         uptimeSeconds: getSessionUptimeSeconds(),
       });
       void flushTelemetry();
