@@ -1,0 +1,13 @@
+# Cloudflare Worker config for the BetterBT BT4U CORS proxy.
+# Deploy with:  npx wrangler deploy   (run from this folder)
+#
+# `name` becomes part of the free URL: https://<name>.<your-subdomain>.workers.dev
+# Rename it to something unique for your account before deploying.
+
+name = "betterbt-bt4u-proxy"
+main = "bt4u-proxy.worker.js"
+compatibility_date = "2026-07-22"
+
+# Free plan is the default — no account_id or paid settings required.
+# workers.dev subdomain is enabled by default; this exposes the *.workers.dev URL.
+workers_dev = true

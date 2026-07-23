@@ -13,9 +13,20 @@ module.exports = ({ config }) => {
     ? existingPlugins
     : [...existingPlugins, 'expo-secure-store'];
 
+  // Optional web sub-path base URL, for hosting under a repo sub-path such as
+  // GitHub Pages project sites (https://<user>.github.io/<repo>/). Set
+  // EXPO_BASE_URL=/betterbt for that; leave it unset when serving at a domain
+  // root (custom domain, or a *.github.io user/org page). No effect on native.
+  const explicitBaseUrl = process.env.EXPO_BASE_URL?.trim();
+  const experiments = {
+    ...(baseConfig.experiments ?? {}),
+    ...(explicitBaseUrl ? { baseUrl: explicitBaseUrl } : {}),
+  };
+
   return {
     ...baseConfig,
     plugins,
+    experiments,
     extra: {
       ...(baseConfig.extra ?? {}),
       debugMockApiEnabled,

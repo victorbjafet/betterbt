@@ -7,6 +7,9 @@ RELEASES_DIR="${DEPLOY_BASE}/releases"
 CURRENT_LINK="${DEPLOY_BASE}/current"
 KEEP_RELEASES="${KEEP_RELEASES:-5}"
 PUBLIC_BASE_URL="${PUBLIC_BASE_URL:-https://betterbt.vbjfr.xyz}"
+# CORS proxy for the official BT4U provider's web build (see cloudflare-worker/README.md).
+# Only affects web; native builds call BT4U directly and ignore this entirely.
+EXPO_PUBLIC_BT4U_PROXY="${EXPO_PUBLIC_BT4U_PROXY:-https://betterbt-proxy.vbjfr.xyz/}"
 TELEMETRY_PORT="${TELEMETRY_PORT:-4318}"
 TELEMETRY_BIND_HOST="${TELEMETRY_BIND_HOST:-127.0.0.1}"
 TELEMETRY_DATA_DIR="${TELEMETRY_DATA_DIR:-/var/lib/betterbt/telemetry}"
@@ -135,13 +138,16 @@ main() {
 
   log "Using app directory: ${APP_DIR}"
   log "Telemetry endpoint for web build: ${EXPO_PUBLIC_TELEMETRY_ENDPOINT}"
+  log "BT4U CORS proxy for web build: ${EXPO_PUBLIC_BT4U_PROXY}"
   cd "${APP_DIR}"
 
   log "Installing dependencies"
   npm ci
 
   log "Exporting web build"
-  EXPO_PUBLIC_TELEMETRY_ENDPOINT="${EXPO_PUBLIC_TELEMETRY_ENDPOINT}" npx expo export --platform web
+  EXPO_PUBLIC_TELEMETRY_ENDPOINT="${EXPO_PUBLIC_TELEMETRY_ENDPOINT}" \
+    EXPO_PUBLIC_BT4U_PROXY="${EXPO_PUBLIC_BT4U_PROXY}" \
+    npx expo export --platform web
 
   if [[ ! -d dist ]]; then
     echo "Export did not produce dist/" >&2
@@ -212,6 +218,7 @@ EOF
 
   log "Deploy complete"
   log "Current release path: $(readlink -f "${CURRENT_LINK}")"
+  log "BT4U CORS proxy: ${EXPO_PUBLIC_BT4U_PROXY}"
   log "Telemetry service: $(systemctl is-active betterbt-telemetry.service)"
   log "Telemetry data dir: ${TELEMETRY_DATA_DIR}"
   log "Telemetry endpoint: ${EXPO_PUBLIC_TELEMETRY_ENDPOINT}"

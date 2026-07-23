@@ -1,0 +1,75 @@
+# Builds the Expo web export as a fully static site and publishes it to GitHub
+# Pages. No backend is involved: telemetry is endpoint-gated in the app, and this
+# workflow deliberately does NOT set EXPO_PUBLIC_TELEMETRY_ENDPOINT, so telemetry
+# stays completely inert (zero network) in the published build.
+#
+# One-time setup (see chat / repo notes):
+#   Settings -> Pages -> Build and deployment -> Source: "GitHub Actions".
+# Optional per-deploy config via Settings -> Secrets and variables -> Actions -> Variables:
+#   EXPO_PUBLIC_BT4U_PROXY : your CORS proxy, e.g. https://your-proxy.example.com/
+#                            (if unset, the app falls back to public proxies)
+#   EXPO_BASE_URL          : "/betterbt" for the default <user>.github.io/betterbt
+#                            URL; leave UNSET for a custom domain served at root.
+
+name: Deploy web to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never run two Pages deploys at once; let a newer push supersede an in-flight one.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Export static web build (telemetry OFF — no backend)
+        env:
+          # NOTE: EXPO_PUBLIC_TELEMETRY_ENDPOINT is intentionally omitted, which
+          # keeps telemetry disabled. API_PROVIDER defaults to bt4u in code, so
+          # it need not be set here.
+          EXPO_PUBLIC_BT4U_PROXY: ${{ vars.EXPO_PUBLIC_BT4U_PROXY }}
+          EXPO_BASE_URL: ${{ vars.EXPO_BASE_URL }}
+        run: npx expo export --platform web
+
+      - name: Apply GitHub Pages fixes
+        run: |
+          # Disable Jekyll: Expo emits an _expo/ directory, and Jekyll ignores
+          # paths beginning with "_". Without this, every JS/CSS asset 404s.
+          touch dist/.nojekyll
+          # SPA fallback: Pages serves 404.html for any path with no matching
+          # file, so deep links (e.g. dynamic /stops/1234) boot the app shell and
+          # the client router resolves the route.
+          cp dist/index.html dist/404.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -8,6 +8,38 @@
 - [x] Verify routes tab flow after live map consolidation
 - [x] Update `README.md` with current tab/screen behavior changes
 
+## Official BT4U API Migration & Serverless Deployment (Jul 2026)
+
+Modular provider layer added: `bt4u` (official Blacksburg Transit web service —
+**now the default** as of 2026-07-22) and `ridebt` (legacy reverse-engineered,
+fallback via `EXPO_PUBLIC_API_PROVIDER=ridebt`). See `API_DOCUMENTATION.md`
+(official) and `API_DOCUMENTATION_LEGACY.md` (reverse-engineered).
+
+- [x] Set up and test the Cloudflare CORS proxy (see `cloudflare-worker/README.md`) — **done 2026-07-22**
+  - [x] Edited `ALLOWED_ORIGINS`, deployed via `npx wrangler deploy` (Worker `betterbt-bt4u-proxy`)
+  - [x] Attached custom domain `https://betterbt-proxy.vbjfr.xyz/` (dashboard → Domains → Add Domain; `vbjfr.xyz` DNS already on Cloudflare) — preferred over `*.workers.dev` (which some ad-blockers/filters block)
+  - [x] Wired `EXPO_PUBLIC_BT4U_PROXY` into `scripts/deploy-web.sh` (prod web build) + local `.env` (gitignored); documented all `EXPO_PUBLIC_*` vars in `.env.example`
+  - [x] Verified end-to-end: returns real XML with correct `Access-Control-Allow-Origin`, blocked targets 403
+  - Note: all 3 public fallback proxies independently failed at various points on 2026-07-22 (codetabs consistently dead; cors.eu.org 429'd under load; proxy.cors.sh was the reliable public one) — self-hosted Worker is the real fix and is now primary. Public proxies remain as automatic fallbacks.
+  - Dashboard pitfall (documented in `cloudflare-worker/README.md`): the "Upload your static files" tile is Pages' static-asset uploader, NOT a Workers deploy path (would host the script as a static file, not run it) — use `wrangler deploy` or the dashboard "Start with Hello World!" code editor.
+- [x] Daytime validation of the official `bt4u` provider, with buses running — **done 2026-07-22** (schema-confirmed via curl AND confirmed working in the running app via the Cloudflare proxy)
+  - [x] Confirmed live `GetCurrentBusInfo` schema: row is `LatestInfoTable`, includes `Direction`/`Speed` directly (heading/speed are NOT a gap) — fixed `bt4uProvider.ts` to read `RouteShortName`/`StopCode`/`IsBusAtStop`/`PercentOfCapacity` directly
+  - [x] Confirmed live `GetNextDeparturesForStop` schema — found + fixed a real bug: code read a `RouteName` field that doesn't exist on `NextDepartures` rows (real field is `RouteShortName`, one row per departure with a direct `AdjustedDepartureTime`, not a bundled CSV), which was silently producing `routeShortName: "UNKNOWN"` for every arrival
+  - [x] Found `GetPatternNamesForDate`/`GetScheduledStopInfo` both accept an empty `routeShortName` for one all-routes/all-stops call — collapsed `fetchRoutePatterns`/`fetchStops` from ~20 parallel per-route requests down to 1 each
+  - [x] In-app verification: ran with `bt4u` provider through the Cloudflare proxy on web — buses, arrivals, timetables, alerts all working
+  - [x] **Made `bt4u` the default** — flipped the `API_PROVIDER` ternary in `constants/config.ts` (now defaults to `bt4u`, `ridebt` via `EXPO_PUBLIC_API_PROVIDER=ridebt`); updated all docs accordingly
+- [x] Ensure telemetry is OFF for the serverless (GitHub Pages) build — **done 2026-07-22, code unchanged**
+  - [x] Confirmed telemetry is endpoint-gated: `telemetryEnabled = Boolean(EXPO_PUBLIC_TELEMETRY_ENDPOINT) && ...`; with the endpoint unset, `trackEvent`/`flushQueue` no-op → zero network, no backend contact (the heartbeat interval + AppState/`pagehide` listeners still register but only call the no-op `trackEvent`)
+  - [x] The GitHub Pages workflow deliberately does NOT set `EXPO_PUBLIC_TELEMETRY_ENDPOINT`, so that build is fully backend-free. The existing server deploy (`scripts/deploy-web.sh`) still sets it and is unaffected.
+  - [ ] Optional (deferred — not needed for backend-free hosting): add a single explicit toggle that also skips `initializeTelemetry()` entirely (no timers/listeners at all) and document it in `README.md` / `DATA_COLLECTION_POLICY.md`. Files: `services/telemetry.ts`, `constants/config.ts`, `app/_layout.tsx`
+- [ ] Publish to GitHub Pages as a fully serverless static site — **workflow added, needs one-time enable**
+  - [x] Telemetry backend-free by construction (above)
+  - [x] Static web export workflow: `.github/workflows/deploy-pages.yml` (builds `expo export -p web`, adds `.nojekyll` + SPA `404.html`, deploys via official Pages Actions). Optional sub-path base URL wired via `EXPO_BASE_URL` in `app.config.js`.
+  - [ ] One-time: Settings → Pages → Source = "GitHub Actions"; set repo variable `EXPO_PUBLIC_BT4U_PROXY` (and `EXPO_BASE_URL=/betterbt` if using the default Pages URL); push to trigger
+  - [ ] Custom domain (optional, free): attach in Settings → Pages + Cloudflare DNS (grey-cloud/DNS-only during cert issue); then clear `EXPO_BASE_URL` for root serving
+  - [ ] Add the Pages / custom-domain origin to the Cloudflare Worker's `ALLOWED_ORIGINS`
+  - [ ] Confirm full functionality on the Pages origin (routes/geometry/stops/alerts always; buses/arrivals in daytime)
+
 ## Phase 1: Foundation (Core Features)
 
 ### 1. Screen & Navigation Implementation
@@ -63,11 +95,11 @@
 
 #### Service Level UI Integration
 - [ ] `useServiceLevel` hook exists but is not displayed anywhere
-  - [ ] **Critical**: Discover ridebt.org calendar API endpoint (inspect network tab)
-  - [ ] Once endpoint found, implement `fetchServiceStatus()` in `services/api/btCalendar.ts`
-  - [ ] Parse response to determine: FULL_SERVICE | REDUCED_SERVICE | NO_SERVICE
+  - [x] **Endpoint discovered (official API)**: service level comes from BT4U `GetScheduledRoutes.ServiceLevel` / `GetSummary` — no calendar scrape needed
+  - [x] Parse response to determine: FULL_SERVICE | REDUCED_SERVICE | NO_SERVICE — implemented in `bt4uProvider.fetchServiceStatus()` (available when `API_PROVIDER=bt4u`)
+  - [ ] Wire `fetchServiceStatus()` into `services/api/btCalendar.ts` / `useServiceLevel` (currently returns default; bt4u helper not yet consumed)
   - [ ] Display banner/indicator on home screen: "⚠️ Reduced Service Today" or "🟢 Full Service"
-  - **Tech**: Custom calendar scraper or API parser, React Query caching
+  - **Tech**: BT4U `GetScheduledRoutes`/`GetSummary` (official) or calendar scrape (legacy), React Query caching
 
 #### Settings Screen & Store Usage
 - [x] Add a settings screen (route, navigation entry, version display, and support actions)
@@ -91,14 +123,29 @@
   - [ ] Implement distance calculation using haversine formula
   - [ ] Find nearest N stops to user's current location within radius
   - [ ] Provide "Nearest Stops" quick-access feature (UI TBD)
-  - **Tech**: `expo-location` (installed), haversine distance math, stop coordinates from `fetchStops`
+  - Note: official `bt4uProvider.fetchNearestStops(lat, lng, count)` returns server-side nearest stops (`GetNearestStops`, with distance) — can back this instead of client-side haversine when `API_PROVIDER=bt4u`
+  - **Tech**: `expo-location` (installed), haversine distance math (legacy) or BT4U `GetNearestStops` (official), stop coordinates from `fetchStops`
+
+#### Location Permission Request & Wiring (double-checked — not yet done)
+- [ ] `useUserLocation` already calls `Location.requestForegroundPermissionsAsync()` and returns coords, but it is **not called from any screen** — no UI currently triggers the permission prompt or consumes the result
+  - [ ] Wire `useUserLocation` into a real entry point (e.g. a "near me" affordance on Routes/Stops tab, or on first launch)
+  - [ ] Add the required permission usage strings — currently **missing** from `app.json`/`app.config.js` (`NSLocationWhenInUseUsageDescription` for iOS, `ACCESS_FINE_LOCATION` for Android); without these the permission prompt will not appear / will fail silently on a real build
+  - [ ] Handle denied/error states in UI (currently only exposed as hook state, unused)
+  - **Files**: `hooks/useUserLocation.ts`, `app.json`, `app.config.js`, wherever "near me" is surfaced
+- [ ] Manual "set my location" fallback: let the user tap a point on the map to use as their location instead of (or in addition to) GPS
+  - [ ] For when location permission is denied, or GPS is inaccurate/unavailable (e.g. indoors)
+  - [ ] Tap-to-place a draggable pin on `MapView.native.tsx` / `MapView.web.tsx`; feed its coordinates into the same nearest-stop flow as `useUserLocation`
+  - [ ] Clear affordance to switch back to GPS location once set
+  - **Files**: `hooks/useUserLocation.ts`, `components/map/MapView.native.tsx`, `components/map/MapView.web.tsx`
+  - **Tech**: shared "location source" concept (`gps` | `manual`) feeding `useNearestStops`
 
 #### Stop Coordinates Data Source
-- [ ] Currently `fetchStops()` returns empty (no endpoint confirmed yet)
-  - [ ] **Discovery**: Inspect ridebt.org or BT API for stop metadata endpoint
-  - [ ] Need: stop ID, name, latitude, longitude, routes served
-  - [ ] Update `services/api/btApi.ts` → `fetchStops()`
-  - **Tech**: RideBT AJAX API or similar
+- [ ] `fetchStops()` returns empty under the legacy `ridebt` provider (no confirmed endpoint)
+  - [x] **Discovery (official API)**: `GetScheduledStopInfo` returns StopName, StopCode, Latitude, Longitude per route; `GetNearestStops` adds distance
+  - [x] Need: stop ID, name, latitude, longitude — satisfied (routes-served derived by aggregating per-route calls)
+  - [x] Update `fetchStops()` — implemented in `bt4uProvider` (aggregates `GetScheduledStopInfo` across routes; active when `API_PROVIDER=bt4u`)
+  - [ ] Optional: back `loadStops()`/`useStops` with `fetchStops()` directly instead of deriving stops from pattern points
+  - **Tech**: BT4U `GetScheduledStopInfo` / `GetNearestStops` (official); pattern-point derivation (legacy)
 
 ---
 
@@ -554,7 +601,7 @@
   - [x] `components/ui/AlertBanner.tsx` (removed after duplicate/closable alerts banner was deprecated)
   - [x] `store/busStore.ts` and `store/routeStore.ts` (removed; React Query remains source of truth)
   - [x] `app/(tabs)/explore.tsx` (removed template screen)
-- [x] Keep roadmap/docs aligned with implementation status (`README.md`, `API_DOCUMENTATION.md`, `TODO.md`)
+- [x] Keep roadmap/docs aligned with implementation status (`README.md`, `API_DOCUMENTATION.md` (official BT4U) + `API_DOCUMENTATION_LEGACY.md` (reverse-engineered RideBT), `TODO.md`)
 
 #### Error Boundaries & Fallback UI
 - [x] Add React error boundary for map crashes
@@ -603,7 +650,10 @@
 | **Phase 1 - Critical** | Stops header alerts pill parity | No | Small | Header component reuse from Routes tab |
 | **Phase 1 - Critical** | Cross-tab stop deselect fix | No | Small | Stable stop-focus state handoff |
 | **Phase 1 - Critical** | Background route/stop preloading stabilization | No | Medium | Query prefetch scheduler validation |
-| **Phase 1 - Critical** | Service level UI | No | Low | Calendar API discovery |
+| **Phase 1 - Critical** | Service level UI | No | Low | ~~Calendar API discovery~~ resolved (BT4U `GetScheduledRoutes`/`GetSummary`); needs UI wiring |
+| ~~**Jul 2026 - Migration**~~ | ~~Official BT4U provider validation + default swap~~ | — | — | **DONE 2026-07-22** |
+| ~~**Jul 2026 - Migration**~~ | ~~Cloudflare CORS proxy setup~~ | — | — | **DONE 2026-07-22** (custom domain) |
+| **Jul 2026 - Deploy** | Telemetry disconnect toggle + serverless GitHub Pages | No | Small | Telemetry made inert |
 | **Phase 1 - Critical** | Favorites persistence | No | Low | Zustand + SecureStore |
 | **Phase 1 - Critical** | Settings store wiring + persistence | No | Medium | settingsStore actions |
 | **Phase 1 - Critical** | Refresh interval control + runtime override | No | Medium | Settings cache + polling hook integration |
@@ -624,4 +674,4 @@
 
 ---
 
-**Last Updated**: April 9, 2026
+**Last Updated**: July 22, 2026

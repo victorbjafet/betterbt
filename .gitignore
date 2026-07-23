@@ -69,6 +69,14 @@ Thumbs.db
 !.env.example
 .env*.local
 
+# Cloudflare Workers (cloudflare-worker/) local tooling state + secrets.
+# .wrangler/ is Wrangler's local build/dev state cache; .dev.vars holds local
+# Worker secrets. Neither should ever be committed.
+.wrangler/
+**/.wrangler/
+.dev.vars
+.dev.vars.*
+
 # local temp artifacts
 *.tmp
 *.temp

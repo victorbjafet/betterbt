@@ -56,7 +56,8 @@ npx expo start
 
 ## Notes
 
-- API behavior and probe details are documented in `API_DOCUMENTATION.md`.
+- The app's data layer is provider-based (see `services/api/providers/`). The default is the official Blacksburg Transit BT4U provider; the older reverse-engineered RideBT provider is available via `EXPO_PUBLIC_API_PROVIDER=ridebt`.
+- Official BT4U API behavior is documented in `API_DOCUMENTATION.md`; the older reverse-engineered RideBT behavior and probe details are in `API_DOCUMENTATION_LEGACY.md`.
 - Planning notes are in `bt-app-plan.md`.
 
 ## Versioning

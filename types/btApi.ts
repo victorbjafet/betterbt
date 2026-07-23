@@ -85,3 +85,13 @@ export interface BtStopDepartureRow {
   stopName: string;
   departures: BtDeparture[];
 }
+
+/**
+ * A stop returned by a proximity search, ordered by distance from a point.
+ * Currently only produced by the official BT4U provider (GetNearestStops).
+ */
+export interface BtNearestStop {
+  stop: BtStop;
+  distanceFeet: number;
+  distanceMiles: number;
+}
