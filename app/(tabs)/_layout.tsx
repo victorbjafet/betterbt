@@ -3,6 +3,7 @@ import { Tabs, useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { ServiceLevelBadge } from '@/components/ui/ServiceLevelBadge';
 import { TransitCacheStatus } from '@/components/ui/TransitCacheStatus';
 import { useAlerts } from '@/hooks/useAlerts';
 import { useTheme } from '@/hooks/useTheme';
@@ -78,6 +79,7 @@ export default function TabsLayout() {
         headerRight: () => (
           <View style={styles.headerRightRow}>
             <TransitCacheStatus />
+            <ServiceLevelBadge />
             <Pressable
               onPress={() => router.push('/settings')}
               accessibilityRole="button"

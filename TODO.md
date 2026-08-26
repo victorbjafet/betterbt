@@ -94,11 +94,12 @@ fallback via `EXPO_PUBLIC_API_PROVIDER=ridebt`). See `API_DOCUMENTATION.md`
   - **Tech**: `expo-secure-store` (installed but unused), Zustand store, useEffect on mount
 
 #### Service Level UI Integration
-- [ ] `useServiceLevel` hook exists but is not displayed anywhere
-  - [x] **Endpoint discovered (official API)**: service level comes from BT4U `GetScheduledRoutes.ServiceLevel` / `GetSummary` — no calendar scrape needed
-  - [x] Parse response to determine: FULL_SERVICE | REDUCED_SERVICE | NO_SERVICE — implemented in `bt4uProvider.fetchServiceStatus()` (available when `API_PROVIDER=bt4u`)
-  - [ ] Wire `fetchServiceStatus()` into `services/api/btCalendar.ts` / `useServiceLevel` (currently returns default; bt4u helper not yet consumed)
-  - [ ] Display banner/indicator on home screen: "⚠️ Reduced Service Today" or "🟢 Full Service"
+- [x] `useServiceLevel` hook now displayed — **done 2026-08-26**
+  - [x] **Endpoint discovered (official API)**: service level comes from BT4U `GetScheduledRoutes.ServiceLevel` — no calendar scrape needed
+  - [x] Parse response to determine FULL / REDUCED / NO / GAME_DAY / SPECIAL — `bt4uProvider.fetchServiceStatus()` reads `GetScheduledRoutes` (empty stopCode, today; schedule-based so it works day AND night, unlike the old GetCurrentRoutes approach) and reports the dominant level across routes
+  - [x] Wired `fetchServiceStatus()` into `services/api/btCalendar.ts` (delegates to the active provider's `fetchServiceStatus` if present) → consumed by `useServiceLevel`
+  - [x] Display indicator: `components/ui/ServiceLevelBadge.tsx` shows a color-coded pill (green/amber/red/…) in the tab header, between the "Loaded … routes and stops" label and the settings button
+  - [ ] Stretch: also surface it as a full-width home-screen banner (the header pill covers the core need)
   - **Tech**: BT4U `GetScheduledRoutes`/`GetSummary` (official) or calendar scrape (legacy), React Query caching
 
 #### Settings Screen & Store Usage

@@ -276,9 +276,10 @@ static daily schedule data (available regardless of live status).
 
 - **Params:** none · **Kind:** Live — **empty overnight**
 - **Row element:** assumed identical to `ScheduledRoutes` (empty at capture time).
-- Used by the extended `fetchServiceStatus()` to gauge whether service is
-  currently running. **Not** used for the route list (it would be empty at
-  night); `fetchRoutes()` uses `GetScheduledRoutes` instead.
+- Not currently used by the provider: the route list uses `GetScheduledRoutes`
+  (night-safe), and `fetchServiceStatus()` also uses `GetScheduledRoutes` so it
+  reports a level day or night. `GetCurrentRoutes` remains available for a future
+  "routes running right now" feature.
 
 ### 4) GetPatternNamesForDate — patterns per route → `fetchRoutePatterns()`
 
@@ -460,7 +461,7 @@ place admin methods (`AddAlert`, `AddPlace`, `GetPlaces`, …).
 | `fetchStops` | `GetScheduledStopInfo` (empty `routeShortName`, single call) | Wired · confirmed · **fills legacy gap, 1 request, not ~20** |
 | `fetchAlerts` | `GetActiveAlerts` | Wired · confirmed with live data |
 | `fetchNearestStops` *(extended)* | `GetNearestStops` | Wired · confirmed · **fills TODO** |
-| `fetchServiceStatus` *(extended)* | `GetCurrentRoutes` | Wired (approximate) · **fills TODO** |
+| `fetchServiceStatus` *(extended)* | `GetScheduledRoutes` (dominant `ServiceLevel`) | Wired · day/night · **shown in header badge** |
 | `fetchRouteTripsPageEmbeddedJson` | `GetArrivalAndDepartureTimesForRoutes` | Wired · confirmed · **replaces HTML scraping** |
 
 ---
@@ -493,10 +494,12 @@ supported by the official service.
   to `GetScheduledRoutes`. Fallback to `STATIC_ROUTES` keeps the route list
   populated regardless.
 
-- **Service level — now available (approximate).** `fetchServiceStatus` infers
-  FULL/REDUCED/NO service from `GetCurrentRoutes` presence and the `ServiceLevel`
-  field. It is exposed as an extended capability but not yet wired into
-  `useServiceLevel` (`btCalendar.ts` still returns its default).
+- **Service level — available and wired.** `fetchServiceStatus` derives today's
+  level from `GetScheduledRoutes` (empty `stopCode`, today's date) and reports the
+  dominant `ServiceLevel` across routes. Being schedule-based, it is correct day
+  or night (the earlier `GetCurrentRoutes` approach was empty overnight).
+  `btCalendar.fetchServiceStatus` delegates to it, `useServiceLevel` consumes it,
+  and `components/ui/ServiceLevelBadge.tsx` renders it as a header pill.
 
 - **True live-vs-scheduled ETAs.** Departures are scheduled times, not live
   predictions — same as the legacy provider and BT's own site.

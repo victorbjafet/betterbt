@@ -1,36 +1,37 @@
 /**
  * Blacksburg Transit Calendar Service
- * Parses service calendar from ridebt.org
- * TODO: Implement once calendar API/webpage is audited
+ *
+ * Today's service level. When the active provider exposes a native service-level
+ * source (the official BT4U provider derives it from GetScheduledRoutes), this
+ * delegates to it. Otherwise (e.g. the legacy RideBT provider, which has no
+ * calendar endpoint) it falls back to a safe default.
  */
 
+import { transitApiProvider } from '@/services/api/btApi';
 import { ServiceLevel, ServiceStatus } from '@/types/serviceLevel';
-import { API_ENDPOINTS } from '@/constants/config';
 
 /**
- * Fetch today's service level from BT calendar
- * Called once on app load
+ * Fetch today's service level. Called on app load (and refetched periodically).
  */
 export const fetchServiceStatus = async (): Promise<ServiceStatus> => {
   try {
-    console.log('Fetching service status from:', API_ENDPOINTS.BT_CALENDAR);
+    if (transitApiProvider.fetchServiceStatus) {
+      return await transitApiProvider.fetchServiceStatus();
+    }
 
-    // TODO: Inspect ridebt.org network tab to find calendar API endpoint
-    // and implement the fetch + parsing logic
-
-    // For now, return full service as default
+    // No provider-native source (legacy provider): default to full service.
     return {
       level: ServiceLevel.FULL_SERVICE,
-      description: 'Full service',
-      notes: 'API not yet implemented',
+      description: 'Full Service',
+      notes: 'No service-level source for the active provider',
       effectiveDate: new Date(),
     };
   } catch (error) {
     console.error('Failed to fetch service status:', error);
-    // Default to full service on error
+    // Default to full service on error so the UI never blocks on this.
     return {
       level: ServiceLevel.FULL_SERVICE,
-      description: 'Unknown (API unavailable)',
+      description: 'Unknown (unavailable)',
       notes: 'Defaulting to full service',
       effectiveDate: new Date(),
     };

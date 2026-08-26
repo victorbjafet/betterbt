@@ -552,23 +552,57 @@ const fetchNearestStops = async (
     .filter((entry): entry is BtNearestStop => entry !== null);
 };
 
-const fetchServiceStatus = async (): Promise<ServiceStatus> => {
-  const rows = await bt4uRequest('GetCurrentRoutes');
-  const routes = rows.map(mapRouteRow).filter((route): route is BtRoute => route !== null);
+// Maps a raw BT4U ServiceLevel string (e.g. "Reduced Service", "Regular
+// Service") to the app's ServiceLevel enum. Matching is keyword-based so new
+// wordings ("Game Day", "Holiday", etc.) degrade sensibly instead of throwing.
+const mapServiceLevel = (raw: string): ServiceLevel => {
+  const text = raw.toLowerCase();
+  if (text.includes('no service') || text.includes('no-service')) return ServiceLevel.NO_SERVICE;
+  if (text.includes('reduced')) return ServiceLevel.REDUCED_SERVICE;
+  if (text.includes('game')) return ServiceLevel.GAME_DAY;
+  if (text.includes('full') || text.includes('regular')) return ServiceLevel.FULL_SERVICE;
+  return ServiceLevel.SPECIAL_SCHEDULE;
+};
 
-  if (routes.length === 0) {
+const fetchServiceStatus = async (): Promise<ServiceStatus> => {
+  // Schedule-based (GetScheduledRoutes, empty stopCode) rather than the live-only
+  // GetCurrentRoutes, so it reports the day's service level day OR night. Each
+  // route carries its own ServiceLevel; on a given day these are usually uniform
+  // but a few year-round routes can differ, so we report the dominant one.
+  const rows = await bt4uRequest('GetScheduledRoutes', {
+    stopCode: '',
+    serviceDate: formatServiceDate(),
+  });
+
+  const levels = rows
+    .map((row) => pickField(row, 'ServiceLevel')?.trim())
+    .filter((value): value is string => Boolean(value));
+
+  if (levels.length === 0) {
+    // No scheduled routes today = genuinely no service (e.g. a holiday).
     return {
       level: ServiceLevel.NO_SERVICE,
-      description: 'No service currently running',
+      description: 'No service scheduled today',
       effectiveDate: new Date(),
     };
   }
 
-  const reduced = routes.some((route) => (route.type ?? '').toLowerCase().includes('reduced'));
+  const counts = new Map<string, number>();
+  for (const level of levels) counts.set(level, (counts.get(level) ?? 0) + 1);
+
+  let dominantRaw = levels[0];
+  let dominantCount = 0;
+  for (const [level, count] of counts) {
+    if (count > dominantCount) {
+      dominantCount = count;
+      dominantRaw = level;
+    }
+  }
+
   return {
-    level: reduced ? ServiceLevel.REDUCED_SERVICE : ServiceLevel.FULL_SERVICE,
-    description: reduced ? 'Reduced service' : 'Full service',
-    notes: `${routes.length} route(s) active`,
+    level: mapServiceLevel(dominantRaw),
+    description: dominantRaw, // BT's own wording, e.g. "Reduced Service"
+    notes: counts.size > 1 ? `${dominantCount}/${levels.length} routes` : undefined,
     effectiveDate: new Date(),
   };
 };
