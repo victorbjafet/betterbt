@@ -1,6 +1,21 @@
 # BetterBT Data Collection Policy
 
-Last updated: April 9, 2026
+Last updated: August 27, 2026
+
+> **This policy does NOT apply to the public BetterBT deployment.** The public
+> app (hosted on GitHub Pages at betterbt.vbjfr.xyz) is **completely serverless
+> and collects no data whatsoever** — there is no telemetry backend, and the only
+> network destinations are the official Blacksburg Transit service (via a
+> stateless Cloudflare CORS proxy that stores nothing) and the map tiles. The
+> telemetry system ships **disabled**: with no `EXPO_PUBLIC_TELEMETRY_ENDPOINT`
+> configured, it does not initialize, send anything, or run any timers.
+>
+> This document is retained for **self-hosters only**. Because BetterBT is open
+> source, anyone can spin up their own instance and opt into the self-hosted
+> telemetry backend (`backend/telemetry/`) by setting
+> `EXPO_PUBLIC_TELEMETRY_ENDPOINT`. If you do, the policy below describes what
+> that self-hosted telemetry collects, and you should surface it to your own
+> users. It has no bearing on the official BetterBT app.
 
 ## Purpose
 
@@ -37,7 +52,6 @@ Usage and reliability events currently collected:
 - `stops.arrivals_loaded` (stop id/code and count only)
 - `stops.route_chip_opened` (route id and stop id/code)
 - `settings.open_source_repo_pressed`
-- `settings.open_data_policy_pressed`
 - `api.query.routes.success` / `api.query.routes.failure`
 - `api.query.buses.success` / `api.query.buses.failure`
 - `api.query.stops.success` / `api.query.stops.failure`

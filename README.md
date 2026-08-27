@@ -23,8 +23,19 @@ The goal of BetterBT is to make BT travel easier and less stressful by giving ri
 - Saved/favorite route support for quick access
 - Fallback scheduling logic for better resilience when data is limited
 - Map crash boundary with graceful fallback and retry actions
-- Lightweight telemetry hooks for route/favorite usage and error events
 - Mobile-first experience built with Expo and React Native
+
+## Privacy
+
+The public app is **completely serverless and collects no data**. It runs as a
+static site (GitHub Pages) that talks only to the official Blacksburg Transit
+service — through a stateless Cloudflare CORS proxy that stores nothing — and to
+map tiles. There is no analytics or telemetry backend.
+
+An **optional** self-hosted telemetry system is included in the source
+(`backend/telemetry/`) for anyone who forks and runs their own instance; it is
+disabled unless `EXPO_PUBLIC_TELEMETRY_ENDPOINT` is set. See
+`DATA_COLLECTION_POLICY.md` (applies to self-hosted telemetry only).
 
 ## Quick Start
 
@@ -95,3 +106,9 @@ Mock responses mirror the documented endpoint shapes for:
 - `getPatternPoints`
 - `getNextDeparturesForStop`
 - `getActiveAlerts`
+
+## License
+
+BetterBT is released under the [MIT License](LICENSE) — you're free to use, copy,
+modify, and distribute it, including commercially, as long as the copyright
+notice and license text are included. Copyright (c) 2026 Victor Jafet.

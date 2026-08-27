@@ -182,6 +182,14 @@ export function trackScreenView(screen: string, payload?: TelemetryPayload) {
 
 export function initializeTelemetry() {
   if (hasInitialized) return;
+
+  // When telemetry is not configured (no EXPO_PUBLIC_TELEMETRY_ENDPOINT — e.g.
+  // the default public serverless build), stay completely inert: no session
+  // events, no heartbeat interval, no AppState/pagehide listeners, zero network.
+  // Telemetry only wires up when a self-hoster sets the endpoint. See
+  // DATA_COLLECTION_POLICY.md.
+  if (!telemetryEnabled) return;
+
   hasInitialized = true;
 
   trackEvent("app.session_started", {

@@ -40,11 +40,6 @@ export default function SettingsScreen() {
     await Linking.openURL('https://github.com/victorbjafet/betterbt');
   };
 
-  const openTelemetryPolicy = async () => {
-    trackEvent('settings.open_data_policy_pressed');
-    await Linking.openURL('https://github.com/victorbjafet/betterbt/blob/main/DATA_COLLECTION_POLICY.md');
-  };
-
   const openFeedback = () => {
     Alert.alert('Feedback', 'Thanks for sharing feedback.');
   };
@@ -148,19 +143,6 @@ export default function SettingsScreen() {
             <View style={styles.linkButtonLeft}>
               <MaterialCommunityIcons name="github" size={18} color={theme.TEXT} />
               <Text style={[styles.linkButtonText, { color: theme.TEXT }]}>View source code</Text>
-            </View>
-            <MaterialCommunityIcons name="open-in-new" size={16} color={theme.TEXT_SECONDARY} />
-          </View>
-        </Pressable>
-
-        <Pressable
-          onPress={openTelemetryPolicy}
-          style={[styles.linkButton, { borderColor: theme.BORDER, backgroundColor: theme.SURFACE_2 }]}
-        >
-          <View style={styles.linkButtonRow}>
-            <View style={styles.linkButtonLeft}>
-              <MaterialCommunityIcons name="shield-account-outline" size={18} color={theme.TEXT} />
-              <Text style={[styles.linkButtonText, { color: theme.TEXT }]}>Data collection policy</Text>
             </View>
             <MaterialCommunityIcons name="open-in-new" size={16} color={theme.TEXT_SECONDARY} />
           </View>
